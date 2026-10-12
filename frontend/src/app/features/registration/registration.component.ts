@@ -34,8 +34,7 @@ import {
   IonSelect,
   IonSelectOption,
 } from '@ionic/angular/standalone';
-import { TranslatePipe } from '@ngx-translate/core';
-import { VerifyOtpCommandData } from '../../core/adapters';
+import { TranslatePipe, VerifyOtpCommandData } from '../../core/adapters';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { OtpComponent } from '../../shared/otp/otp.component';
 import { RegistrationService } from './registration.service';
@@ -101,7 +100,7 @@ const GENERIC_ERROR_KEY = 'registration.identity.error.invalid';
             class="page-logo"
             priority
           />
-          <ion-card-title>{{ 'registration.title' | translate }}</ion-card-title>
+          <ion-card-title>{{ 'registration.title' | appTranslate }}</ion-card-title>
         </ion-card-header>
       }
 
@@ -118,7 +117,7 @@ const GENERIC_ERROR_KEY = 'registration.identity.error.invalid';
                 formControlName="fineractClientId"
                 fill="outline"
                 labelPlacement="stacked"
-                [label]="'registration.identity.clientIdLabel' | translate"
+                [label]="'registration.identity.clientIdLabel' | appTranslate"
                 min="1"
               />
               <ion-input
@@ -126,7 +125,7 @@ const GENERIC_ERROR_KEY = 'registration.identity.error.invalid';
                 formControlName="email"
                 fill="outline"
                 labelPlacement="stacked"
-                [label]="'common.field.email' | translate"
+                [label]="'common.field.email' | appTranslate"
                 autocomplete="username"
               />
               <ion-input
@@ -134,8 +133,8 @@ const GENERIC_ERROR_KEY = 'registration.identity.error.invalid';
                 formControlName="password"
                 fill="outline"
                 labelPlacement="stacked"
-                [label]="'common.field.password' | translate"
-                [helperText]="'registration.identity.passwordHint' | translate"
+                [label]="'common.field.password' | appTranslate"
+                [helperText]="'registration.identity.passwordHint' | appTranslate"
                 autocomplete="new-password"
               />
               <ion-select
@@ -143,7 +142,7 @@ const GENERIC_ERROR_KEY = 'registration.identity.error.invalid';
                 fill="outline"
                 labelPlacement="stacked"
                 interface="popover"
-                [label]="'registration.identity.documentTypeLabel' | translate"
+                [label]="'registration.identity.documentTypeLabel' | appTranslate"
               >
                 <ion-select-option value="SSN">SSN</ion-select-option>
                 <ion-select-option value="Aadhaar">Aadhaar</ion-select-option>
@@ -153,11 +152,11 @@ const GENERIC_ERROR_KEY = 'registration.identity.error.invalid';
                 formControlName="documentKey"
                 fill="outline"
                 labelPlacement="stacked"
-                [label]="'registration.identity.documentNumberLabel' | translate"
+                [label]="'registration.identity.documentNumberLabel' | appTranslate"
                 autocomplete="off"
               />
               <ion-button type="submit" [disabled]="loading()">
-                {{ 'common.action.continue' | translate }}
+                {{ 'common.action.continue' | appTranslate }}
               </ion-button>
             </form>
           }
@@ -175,29 +174,29 @@ const GENERIC_ERROR_KEY = 'registration.identity.error.invalid';
               (click)="resend()"
             >
               @if (resendCooldown() > 0) {
-                {{ 'registration.otp.resendIn' | translate: { seconds: resendCooldown() } }}
+                {{ 'registration.otp.resendIn' | appTranslate: { seconds: resendCooldown() } }}
               } @else {
-                {{ 'registration.otp.resend' | translate }}
+                {{ 'registration.otp.resend' | appTranslate }}
               }
             </ion-button>
           }
           @case ('done') {
             <div class="done">
-              <h2 class="done-title">{{ 'registration.done.title' | translate }}</h2>
+              <h2 class="done-title">{{ 'registration.done.title' | appTranslate }}</h2>
               @if (maskedLastFour()) {
                 <p class="done-sub">
-                  {{ 'registration.done.idEnding' | translate: { lastFour: maskedLastFour() } }}
+                  {{ 'registration.done.idEnding' | appTranslate: { lastFour: maskedLastFour() } }}
                 </p>
               }
               <ion-button routerLink="/login">{{
-                'registration.done.continueToLogin' | translate
+                'registration.done.continueToLogin' | appTranslate
               }}</ion-button>
             </div>
           }
         }
         @if (step() !== 'done') {
           <p class="prompt">
-            <a routerLink="/login">{{ 'registration.backToLogin' | translate }}</a>
+            <a routerLink="/login">{{ 'registration.backToLogin' | appTranslate }}</a>
           </p>
         }
       </ion-card-content>
