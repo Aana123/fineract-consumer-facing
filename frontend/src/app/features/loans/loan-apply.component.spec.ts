@@ -22,7 +22,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormGroup } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { provideIonicAngular } from '@ionic/angular/standalone';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideI18nTesting } from '../../testing/i18n-testing';
 import { of } from 'rxjs';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { LoanApplyComponent } from './loan-apply.component';
@@ -68,7 +68,7 @@ function createComponent(): ComponentFixture<LoanApplyComponent> {
     providers: [
       provideZonelessChangeDetection(),
       provideIonicAngular({ mode: 'md' }),
-      provideTranslateService(),
+      ...provideI18nTesting(),
       provideRouter([]),
       { provide: NotificationService, useValue: { showError } },
       {

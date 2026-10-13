@@ -33,7 +33,7 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { add } from 'ionicons/icons';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe } from '../../core/adapters';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { LoansStore } from './loans.store';
@@ -58,10 +58,10 @@ import { LoansStore } from './loans.store';
     DecimalPipe,
   ],
   template: `
-    <app-page-header [title]="'loans.list.title' | translate">
+    <app-page-header [title]="'loans.list.title' | appTranslate">
       <ion-button [routerLink]="['/loans', 'apply']">
         <ion-icon slot="start" name="add" aria-hidden="true" />
-        {{ 'loans.list.applyCta' | translate }}
+        {{ 'loans.list.applyCta' | appTranslate }}
       </ion-button>
     </app-page-header>
 
@@ -74,15 +74,15 @@ import { LoansStore } from './loans.store';
         <div class="table-scroll">
           <table cdk-table [dataSource]="store.loans()">
             <ng-container cdkColumnDef="accountNo">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.account' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.account' | appTranslate }}</th>
               <td cdk-cell *cdkCellDef="let row">{{ row.accountNo }}</td>
             </ng-container>
             <ng-container cdkColumnDef="productName">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.product' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.product' | appTranslate }}</th>
               <td cdk-cell *cdkCellDef="let row">{{ row.productName }}</td>
             </ng-container>
             <ng-container cdkColumnDef="status">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.status' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.status' | appTranslate }}</th>
               <td cdk-cell *cdkCellDef="let row">
                 @if (row.status) {
                   <app-status-badge [status]="row.status" />
@@ -90,7 +90,9 @@ import { LoansStore } from './loans.store';
               </td>
             </ng-container>
             <ng-container cdkColumnDef="currency">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.currency' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>
+                {{ 'common.table.currency' | appTranslate }}
+              </th>
               <td cdk-cell *cdkCellDef="let row">{{ row.currency }}</td>
             </ng-container>
 
@@ -102,7 +104,7 @@ import { LoansStore } from './loans.store';
               (click)="open(row.id)"
             ></tr>
             <tr class="empty-row" *cdkNoDataRow>
-              <td [attr.colspan]="columns.length">{{ 'loans.list.empty' | translate }}</td>
+              <td [attr.colspan]="columns.length">{{ 'loans.list.empty' | appTranslate }}</td>
             </tr>
           </table>
         </div>
@@ -111,22 +113,24 @@ import { LoansStore } from './loans.store';
 
     <ion-card>
       <ion-card-header>
-        <ion-card-title>{{ 'loans.obligees.title' | translate }}</ion-card-title>
+        <ion-card-title>{{ 'loans.obligees.title' | appTranslate }}</ion-card-title>
       </ion-card-header>
       <ion-card-content>
         <div class="table-scroll">
           <table cdk-table [dataSource]="store.obligees()">
             <ng-container cdkColumnDef="displayName">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'loans.obligees.borrower' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>
+                {{ 'loans.obligees.borrower' | appTranslate }}
+              </th>
               <td cdk-cell *cdkCellDef="let row">{{ row.displayName }}</td>
             </ng-container>
             <ng-container cdkColumnDef="accountNumber">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.account' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.account' | appTranslate }}</th>
               <td cdk-cell *cdkCellDef="let row">{{ row.accountNumber }}</td>
             </ng-container>
             <ng-container cdkColumnDef="loanAmount">
               <th cdk-header-cell *cdkHeaderCellDef class="num">
-                {{ 'loans.obligees.loanAmount' | translate }}
+                {{ 'loans.obligees.loanAmount' | appTranslate }}
               </th>
               <td cdk-cell *cdkCellDef="let row" class="num">
                 {{ row.loanAmount | number: '1.2-2' }}
@@ -134,7 +138,7 @@ import { LoansStore } from './loans.store';
             </ng-container>
             <ng-container cdkColumnDef="guaranteeAmount">
               <th cdk-header-cell *cdkHeaderCellDef class="num">
-                {{ 'loans.obligees.guaranteeAmount' | translate }}
+                {{ 'loans.obligees.guaranteeAmount' | appTranslate }}
               </th>
               <td cdk-cell *cdkCellDef="let row" class="num">
                 {{ row.guaranteeAmount | number: '1.2-2' }}
@@ -142,7 +146,7 @@ import { LoansStore } from './loans.store';
             </ng-container>
             <ng-container cdkColumnDef="amountReleased">
               <th cdk-header-cell *cdkHeaderCellDef class="num">
-                {{ 'loans.obligees.amountReleased' | translate }}
+                {{ 'loans.obligees.amountReleased' | appTranslate }}
               </th>
               <td cdk-cell *cdkCellDef="let row" class="num">
                 {{ row.amountReleased | number: '1.2-2' }}
@@ -153,7 +157,7 @@ import { LoansStore } from './loans.store';
             <tr cdk-row *cdkRowDef="let row; columns: obligeeColumns"></tr>
             <tr class="empty-row" *cdkNoDataRow>
               <td [attr.colspan]="obligeeColumns.length">
-                {{ 'loans.obligees.empty' | translate }}
+                {{ 'loans.obligees.empty' | appTranslate }}
               </td>
             </tr>
           </table>

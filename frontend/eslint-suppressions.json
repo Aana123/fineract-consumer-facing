@@ -27,41 +27,6 @@
       "count": 1
     }
   },
-  "src/app/features/loans/loan-apply.component.spec.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/loans/loan-apply.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/loans/loan-repay.component.spec.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/loans/loan-repay.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/loans/loans-detail.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/loans/loans-list.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/loans/loans-transaction.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
   "src/app/features/registration/registration.component.spec.ts": {
     "local/no-i18n-library-import": {
       "count": 1

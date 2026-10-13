@@ -29,7 +29,7 @@ import {
   IonCardTitle,
   IonRouterLink,
 } from '@ionic/angular/standalone';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe } from '../../core/adapters';
 import { LoansStore } from './loans.store';
 
 @Component({
@@ -53,24 +53,24 @@ import { LoansStore } from './loans.store';
       <ion-card>
         <ion-card-header>
           <ion-card-title>{{
-            'common.transaction.title' | translate: { id: tx.id }
+            'common.transaction.title' | appTranslate: { id: tx.id }
           }}</ion-card-title>
           <ion-card-subtitle>{{ tx.date | date: 'mediumDate' }}</ion-card-subtitle>
         </ion-card-header>
         <ion-card-content>
-          <p>{{ 'loans.transaction.typeLabel' | translate }} {{ tx.type | translate }}</p>
+          <p>{{ 'loans.transaction.typeLabel' | appTranslate }} {{ tx.type | appTranslate }}</p>
           <p>
-            {{ 'loans.transaction.amountLabel' | translate }}
+            {{ 'loans.transaction.amountLabel' | appTranslate }}
             {{ tx.amount | currency: tx.currency }}
           </p>
           <p>
-            {{ 'loans.transaction.outstandingLabel' | translate }}
+            {{ 'loans.transaction.outstandingLabel' | appTranslate }}
             {{ tx.outstandingLoanBalance | currency: tx.currency }}
           </p>
         </ion-card-content>
         <div class="card-actions">
           <ion-button fill="clear" [routerLink]="['/loans', loanId]">
-            {{ 'loans.transaction.backToLoan' | translate }}
+            {{ 'loans.transaction.backToLoan' | appTranslate }}
           </ion-button>
         </div>
       </ion-card>

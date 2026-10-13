@@ -41,8 +41,7 @@ import {
   IonSelect,
   IonSelectOption,
 } from '@ionic/angular/standalone';
-import { TranslatePipe } from '@ngx-translate/core';
-import { SubmitLoanApplicationCommandRequest } from '../../core/adapters';
+import { SubmitLoanApplicationCommandRequest, TranslatePipe } from '../../core/adapters';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { LoansStore } from './loans.store';
 
@@ -78,7 +77,7 @@ const FIELD_ERROR_KEYS = [
   template: `
     <ion-card>
       <ion-card-header>
-        <ion-card-title>{{ 'loans.apply.title' | translate }}</ion-card-title>
+        <ion-card-title>{{ 'loans.apply.title' | appTranslate }}</ion-card-title>
       </ion-card-header>
 
       @if (loading()) {
@@ -92,7 +91,7 @@ const FIELD_ERROR_KEYS = [
             fill="outline"
             labelPlacement="stacked"
             interface="popover"
-            [label]="'loans.apply.productLabel' | translate"
+            [label]="'loans.apply.productLabel' | appTranslate"
             (ionChange)="onProductChange($event)"
           >
             @for (option of store.template()?.productOptions ?? []; track option.id) {
@@ -105,28 +104,28 @@ const FIELD_ERROR_KEYS = [
             formControlName="principal"
             fill="outline"
             labelPlacement="stacked"
-            [label]="'loans.apply.principalLabel' | translate"
+            [label]="'loans.apply.principalLabel' | appTranslate"
           />
           <ion-input
             type="number"
             formControlName="numberOfRepayments"
             fill="outline"
             labelPlacement="stacked"
-            [label]="'loans.apply.numberOfRepaymentsLabel' | translate"
+            [label]="'loans.apply.numberOfRepaymentsLabel' | appTranslate"
           />
           <ion-input
             type="number"
             formControlName="repaymentEvery"
             fill="outline"
             labelPlacement="stacked"
-            [label]="'loans.apply.repaymentEveryLabel' | translate"
+            [label]="'loans.apply.repaymentEveryLabel' | appTranslate"
           />
           <ion-input
             type="number"
             formControlName="loanTermFrequency"
             fill="outline"
             labelPlacement="stacked"
-            [label]="'loans.apply.loanTermFrequencyLabel' | translate"
+            [label]="'loans.apply.loanTermFrequencyLabel' | appTranslate"
           />
           <ion-input
             type="number"
@@ -134,21 +133,21 @@ const FIELD_ERROR_KEYS = [
             formControlName="interestRatePerPeriod"
             fill="outline"
             labelPlacement="stacked"
-            [label]="'loans.apply.interestRateLabel' | translate"
+            [label]="'loans.apply.interestRateLabel' | appTranslate"
           />
           <ion-input
             formControlName="expectedDisbursementDate"
             fill="outline"
             labelPlacement="stacked"
-            [label]="'loans.apply.expectedDisbursementDateLabel' | translate"
-            [placeholder]="'common.placeholder.date' | translate"
+            [label]="'loans.apply.expectedDisbursementDateLabel' | appTranslate"
+            [placeholder]="'common.placeholder.date' | appTranslate"
           />
           <ion-input
             formControlName="submittedOnDate"
             fill="outline"
             labelPlacement="stacked"
-            [label]="'loans.apply.submittedOnDateLabel' | translate"
-            [placeholder]="'common.placeholder.date' | translate"
+            [label]="'loans.apply.submittedOnDateLabel' | appTranslate"
+            [placeholder]="'common.placeholder.date' | appTranslate"
           />
         </form>
 
@@ -160,10 +159,10 @@ const FIELD_ERROR_KEYS = [
             [disabled]="loading() || form.invalid"
             (click)="preview()"
           >
-            {{ 'loans.apply.previewCta' | translate }}
+            {{ 'loans.apply.previewCta' | appTranslate }}
           </ion-button>
           <ion-button type="button" [disabled]="loading()" (click)="submit()">
-            {{ 'loans.apply.submitCta' | translate }}
+            {{ 'loans.apply.submitCta' | appTranslate }}
           </ion-button>
         </div>
       </ion-card-content>
@@ -172,11 +171,11 @@ const FIELD_ERROR_KEYS = [
     @if (store.schedulePreview(); as schedule) {
       <ion-card>
         <ion-card-header>
-          <ion-card-title>{{ 'loans.apply.scheduleTitle' | translate }}</ion-card-title>
+          <ion-card-title>{{ 'loans.apply.scheduleTitle' | appTranslate }}</ion-card-title>
           <ion-card-subtitle>
             {{
               'loans.apply.totalRepaymentExpected'
-                | translate
+                | appTranslate
                   : { amount: schedule.totalRepaymentExpected, currency: schedule.currency }
             }}
           </ion-card-subtitle>
@@ -186,31 +185,31 @@ const FIELD_ERROR_KEYS = [
             <table cdk-table [dataSource]="schedule.periods ?? []">
               <ng-container cdkColumnDef="period">
                 <th cdk-header-cell *cdkHeaderCellDef>
-                  {{ 'loans.apply.schedule.period' | translate }}
+                  {{ 'loans.apply.schedule.period' | appTranslate }}
                 </th>
                 <td cdk-cell *cdkCellDef="let row">{{ row.period }}</td>
               </ng-container>
               <ng-container cdkColumnDef="dueDate">
                 <th cdk-header-cell *cdkHeaderCellDef>
-                  {{ 'loans.apply.schedule.dueDate' | translate }}
+                  {{ 'loans.apply.schedule.dueDate' | appTranslate }}
                 </th>
                 <td cdk-cell *cdkCellDef="let row">{{ row.dueDate }}</td>
               </ng-container>
               <ng-container cdkColumnDef="principalDue">
                 <th cdk-header-cell *cdkHeaderCellDef class="num">
-                  {{ 'loans.apply.principalLabel' | translate }}
+                  {{ 'loans.apply.principalLabel' | appTranslate }}
                 </th>
                 <td cdk-cell *cdkCellDef="let row" class="num">{{ row.principalDue }}</td>
               </ng-container>
               <ng-container cdkColumnDef="totalDueForPeriod">
                 <th cdk-header-cell *cdkHeaderCellDef class="num">
-                  {{ 'loans.apply.schedule.totalDue' | translate }}
+                  {{ 'loans.apply.schedule.totalDue' | appTranslate }}
                 </th>
                 <td cdk-cell *cdkCellDef="let row" class="num">{{ row.totalDueForPeriod }}</td>
               </ng-container>
               <ng-container cdkColumnDef="outstandingBalance">
                 <th cdk-header-cell *cdkHeaderCellDef class="num">
-                  {{ 'common.table.balance' | translate }}
+                  {{ 'common.table.balance' | appTranslate }}
                 </th>
                 <td cdk-cell *cdkCellDef="let row" class="num">{{ row.outstandingBalance }}</td>
               </ng-container>
@@ -227,11 +226,11 @@ const FIELD_ERROR_KEYS = [
       <ion-card>
         <ion-card-header>
           <ion-card-title>{{
-            'loans.apply.draftTitle' | translate: { id: draft.loanId }
+            'loans.apply.draftTitle' | appTranslate: { id: draft.loanId }
           }}</ion-card-title>
         </ion-card-header>
         <ion-card-content>
-          <p>{{ 'loans.apply.draftHint' | translate }}</p>
+          <p>{{ 'loans.apply.draftHint' | appTranslate }}</p>
           <div class="actions-row">
             <ion-button
               fill="outline"
@@ -240,7 +239,7 @@ const FIELD_ERROR_KEYS = [
               [disabled]="loading()"
               (click)="modify(draft.loanId)"
             >
-              {{ 'loans.apply.modifyCta' | translate }}
+              {{ 'loans.apply.modifyCta' | appTranslate }}
             </ion-button>
             <ion-button
               class="btn-danger"
@@ -248,7 +247,7 @@ const FIELD_ERROR_KEYS = [
               [disabled]="loading()"
               (click)="withdraw(draft.loanId)"
             >
-              {{ 'loans.apply.withdrawCta' | translate }}
+              {{ 'loans.apply.withdrawCta' | appTranslate }}
             </ion-button>
           </div>
         </ion-card-content>

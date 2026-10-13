@@ -45,7 +45,7 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { arrowBack, cash } from 'ionicons/icons';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe } from '../../core/adapters';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { OtpComponent } from '../../shared/otp/otp.component';
 import { SavingsStore } from '../savings/savings.store';
@@ -80,7 +80,7 @@ const MIN_AMOUNT = 0.01;
   template: `
     <ion-card class="repay-card">
       <ion-card-header>
-        <ion-card-title>{{ 'loans.repay.title' | translate }}</ion-card-title>
+        <ion-card-title>{{ 'loans.repay.title' | appTranslate }}</ion-card-title>
         @if (loansStore.selected(); as loan) {
           <ion-card-subtitle>{{ loan.productName }} — {{ loan.accountNo }}</ion-card-subtitle>
         }
@@ -96,7 +96,7 @@ const MIN_AMOUNT = 0.01;
             <!-- Non-active loans redirect away (see constructor); render nothing meanwhile. -->
             @if (activeLoan(); as loan) {
               <p class="outstanding">
-                {{ 'loans.detail.totalOutstandingLabel' | translate }}
+                {{ 'loans.detail.totalOutstandingLabel' | appTranslate }}
                 <span class="amount">{{ loan.totalOutstanding | currency: loan.currency }}</span>
               </p>
               <form [formGroup]="form" (ngSubmit)="initiate()">
@@ -105,7 +105,7 @@ const MIN_AMOUNT = 0.01;
                   interface="popover"
                   fill="outline"
                   labelPlacement="stacked"
-                  [label]="'loans.repay.fromAccountLabel' | translate"
+                  [label]="'loans.repay.fromAccountLabel' | appTranslate"
                 >
                   @for (account of savingsStore.accounts(); track account.id) {
                     <ion-select-option [value]="account.id">{{
@@ -120,12 +120,12 @@ const MIN_AMOUNT = 0.01;
                   formControlName="amount"
                   fill="outline"
                   labelPlacement="stacked"
-                  [label]="'loans.repay.amountLabel' | translate"
+                  [label]="'loans.repay.amountLabel' | appTranslate"
                 />
                 <div class="actions-end">
                   <ion-button type="submit" [disabled]="loading()">
                     <ion-icon slot="start" name="cash" aria-hidden="true" />
-                    {{ 'loans.repay.submitCta' | translate }}
+                    {{ 'loans.repay.submitCta' | appTranslate }}
                   </ion-button>
                 </div>
               </form>
@@ -141,12 +141,12 @@ const MIN_AMOUNT = 0.01;
           }
           @case ('done') {
             <div class="done">
-              <p>{{ 'loans.repay.done.complete' | translate }}</p>
+              <p>{{ 'loans.repay.done.complete' | appTranslate }}</p>
               @if (transfersStore.result(); as result) {
                 <dl>
-                  <dt>{{ 'loans.repay.done.reference' | translate }}</dt>
+                  <dt>{{ 'loans.repay.done.reference' | appTranslate }}</dt>
                   <dd>{{ result.transferId }}</dd>
-                  <dt>{{ 'loans.repay.done.amount' | translate }}</dt>
+                  <dt>{{ 'loans.repay.done.amount' | appTranslate }}</dt>
                   <dd>{{ result.amount | number: '1.2-2' }}</dd>
                 </dl>
               }
@@ -158,7 +158,7 @@ const MIN_AMOUNT = 0.01;
           <div class="actions-end">
             <ion-button fill="outline" [routerLink]="['/loans', loanId]">
               <ion-icon slot="start" name="arrow-back" aria-hidden="true" />
-              {{ 'loans.transaction.backToLoan' | translate }}
+              {{ 'loans.transaction.backToLoan' | appTranslate }}
             </ion-button>
           </div>
         }
