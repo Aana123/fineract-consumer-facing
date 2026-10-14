@@ -166,7 +166,7 @@ The conventions in `AGENTS.md` ("Backend conventions") that can be checked from 
 
 |`NamingArchitectureTest`
 |Command-side `data/` classes end in `Command`, `CommandData`, `CommandRequest` or `CommandResponse`. Enums, `*Constants` holders and `@ConfigurationProperties` classes carry no role suffix and are exempt.
-|frozen
+|hard
 
 |`NamingArchitectureTest`
 |The same suffix rule for query-side `data/` (`Query`, `QueryData`, `QueryRequest`, `QueryResponse`). No class ends in `Dto`, `DTO`, `Result`, `Summary`, `Info` or `View`; no `infrastructure` class ends in `Manager`, `Util`, `Utils` or `Context`. `@RestController` classes are `*CommandController` / `*QueryController` by side, Spring Data repositories `*CommandRepository` / `*QueryRepository`, query entities `*QueryEntity`, and exception advice classes `*Handler`.

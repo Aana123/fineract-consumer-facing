@@ -22,7 +22,6 @@ package org.apache.fineract.consumer;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static com.tngtech.archunit.library.freeze.FreezingArchRule.freeze;
 import static org.apache.fineract.consumer.ArchitectureFixtures.BASE_PACKAGE;
 import static org.apache.fineract.consumer.ArchitectureFixtures.INFRASTRUCTURE;
 import static org.apache.fineract.consumer.ArchitectureFixtures.MAIN_CLASSES;
@@ -51,11 +50,11 @@ class NamingArchitectureTest {
 
     @Test
     void commandDataClassesCarryACommandRoleSuffix() {
-        freeze(classes().that().resideInAPackage(side("command", "data")).and(ROLE_CARRYING_DATA_CLASSES).should()
+        classes().that().resideInAPackage(side("command", "data")).and(ROLE_CARRYING_DATA_CLASSES).should()
                 .haveSimpleNameEndingWith("Command").orShould().haveSimpleNameEndingWith("CommandData").orShould()
                 .haveSimpleNameEndingWith("CommandRequest").orShould().haveSimpleNameEndingWith("CommandResponse")
                 .as("command-side data classes end in Command, CommandData, CommandRequest or CommandResponse")
-                .because("AGENTS.md Naming: classes under data/ carry a role suffix plus the CQRS side")).check(MAIN_CLASSES);
+                .because("AGENTS.md Naming: classes under data/ carry a role suffix plus the CQRS side").check(MAIN_CLASSES);
     }
 
     @Test
