@@ -23,7 +23,7 @@ import {
   BeneficiariesCommandControllerService,
   BeneficiariesQueryControllerService,
 } from '@bff/client';
-import { deviceFingerprint } from '../../auth/device-fingerprint';
+import { DeviceFingerprint } from '../../auth/device-fingerprint';
 import type {
   BeneficiaryApi,
   BeneficiaryChallengeCommandData,
@@ -39,6 +39,7 @@ import type {
 export class BffBeneficiaryApi implements BeneficiaryApi {
   private readonly query = inject(BeneficiariesQueryControllerService);
   private readonly command = inject(BeneficiariesCommandControllerService);
+  private readonly fingerprint = inject(DeviceFingerprint);
 
   list(): Observable<BeneficiaryQueryData[]> {
     return this.query.listBeneficiaries();
@@ -47,25 +48,25 @@ export class BffBeneficiaryApi implements BeneficiaryApi {
   initiateAdd(
     request: InitiateAddBeneficiaryCommandRequest,
   ): Observable<BeneficiaryChallengeCommandData> {
-    return this.command.initiateAddBeneficiary(deviceFingerprint(), request);
+    return this.command.initiateAddBeneficiary(this.fingerprint.get(), request);
   }
 
   confirmAdd(request: ConfirmAddBeneficiaryCommandRequest): Observable<BeneficiaryCommandData> {
-    return this.command.confirmAddBeneficiary(deviceFingerprint(), request);
+    return this.command.confirmAddBeneficiary(this.fingerprint.get(), request);
   }
 
   initiateUpdate(
     publicId: string,
     request: InitiateUpdateBeneficiaryCommandRequest,
   ): Observable<BeneficiaryChallengeCommandData> {
-    return this.command.initiateUpdateBeneficiary(deviceFingerprint(), publicId, request);
+    return this.command.initiateUpdateBeneficiary(this.fingerprint.get(), publicId, request);
   }
 
   confirmUpdate(
     publicId: string,
     request: ConfirmUpdateBeneficiaryCommandRequest,
   ): Observable<BeneficiaryCommandData> {
-    return this.command.confirmUpdateBeneficiary(deviceFingerprint(), publicId, request);
+    return this.command.confirmUpdateBeneficiary(this.fingerprint.get(), publicId, request);
   }
 
   remove(publicId: string): Observable<unknown> {

@@ -20,7 +20,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { TransfersCommandControllerService, TransfersQueryControllerService } from '@bff/client';
-import { deviceFingerprint } from '../../auth/device-fingerprint';
+import { DeviceFingerprint } from '../../auth/device-fingerprint';
 import { mapPage } from './bff-page';
 import type { Page } from './page';
 import type {
@@ -36,16 +36,16 @@ import type {
 export class BffTransferApi implements TransferApi {
   private readonly command = inject(TransfersCommandControllerService);
   private readonly query = inject(TransfersQueryControllerService);
-
+  private readonly fingerprint = inject(DeviceFingerprint);
   initiate(request: InitiateTransferCommandRequest): Observable<TransferChallengeCommandData> {
-    return this.command.initiateTransfer(deviceFingerprint(), request);
+    return this.command.initiateTransfer(this.fingerprint.get(), request);
   }
 
   confirm(
     idempotencyKey: string,
     request: ConfirmTransferCommandRequest,
   ): Observable<TransferCommandData> {
-    return this.command.confirmTransfer(deviceFingerprint(), idempotencyKey, request);
+    return this.command.confirmTransfer(this.fingerprint.get(), idempotencyKey, request);
   }
 
   list(page: number, size: number): Observable<Page<TransferQueryData>> {

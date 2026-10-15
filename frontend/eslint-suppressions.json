@@ -1,17 +1,4 @@
 {
-  "src/app/core/auth/device-fingerprint.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
-  "src/app/core/i18n/i18n.service.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "src/app/features/auth/forgot-password.component.spec.ts": {
     "local/no-i18n-library-import": {
       "count": 1

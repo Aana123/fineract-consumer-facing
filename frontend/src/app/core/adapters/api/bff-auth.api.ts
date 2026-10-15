@@ -20,7 +20,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { AuthenticationCommandControllerService } from '@bff/client';
-import { deviceFingerprint } from '../../auth/device-fingerprint';
+import { DeviceFingerprint } from '../../auth/device-fingerprint';
 import type {
   AuthApi,
   LoginChallengeCommandData,
@@ -32,17 +32,18 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class BffAuthApi implements AuthApi {
   private readonly api = inject(AuthenticationCommandControllerService);
+  private readonly fingerprint = inject(DeviceFingerprint);
 
   login(request: LoginCommandRequest): Observable<LoginChallengeCommandData> {
-    return this.api.login(deviceFingerprint(), request);
+    return this.api.login(this.fingerprint.get(), request);
   }
 
   verifyTwoFactor(request: VerifyTwoFactorCommandRequest): Observable<SessionCommandData> {
-    return this.api.verifyTwoFactor(deviceFingerprint(), request);
+    return this.api.verifyTwoFactor(this.fingerprint.get(), request);
   }
 
   refreshSession(): Observable<SessionCommandData> {
-    return this.api.refreshSession(deviceFingerprint());
+    return this.api.refreshSession(this.fingerprint.get());
   }
 
   logout(): Observable<unknown> {

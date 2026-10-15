@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { provideBffApiTesting } from '../../testing/bff-api-testing';
-import { deviceFingerprint } from '../../core/auth/device-fingerprint';
+import { DeviceFingerprint } from '../../core/auth/device-fingerprint';
 import { SettingsStore } from './settings.store';
 
 const PASSWORD_CHANGE_INITIATE_URL = '/api/v1/user/password/change/initiate';
@@ -35,7 +34,6 @@ const STEP_UP_TOKEN = 'tok';
 describe('SettingsStore', () => {
   let store: SettingsStore;
   let controller: HttpTestingController;
-
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideZonelessChangeDetection(), ...provideBffApiTesting()],
@@ -50,7 +48,9 @@ describe('SettingsStore', () => {
     store.initiatePasswordChange({ currentPassword: 'Current-password-1!' }).subscribe();
 
     const req = controller.expectOne(PASSWORD_CHANGE_INITIATE_URL);
-    expect(req.request.headers.get('X-Device-Fingerprint')).toBe(deviceFingerprint());
+    expect(req.request.headers.get('X-Device-Fingerprint')).toBe(
+      TestBed.inject(DeviceFingerprint).get(),
+    );
     req.flush({ stepUpToken: STEP_UP_TOKEN, sentTo: MASKED_EMAIL });
 
     expect(store.passwordChangeChallenge()?.stepUpToken).toBe(STEP_UP_TOKEN);
@@ -68,7 +68,9 @@ describe('SettingsStore', () => {
       .subscribe();
 
     const req = controller.expectOne(PASSWORD_CHANGE_CONFIRM_URL);
-    expect(req.request.headers.get('X-Device-Fingerprint')).toBe(deviceFingerprint());
+    expect(req.request.headers.get('X-Device-Fingerprint')).toBe(
+      TestBed.inject(DeviceFingerprint).get(),
+    );
     req.flush({});
 
     expect(store.passwordChangeChallenge()).toBeNull();
