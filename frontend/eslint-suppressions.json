@@ -27,16 +27,6 @@
       "count": 1
     }
   },
-  "src/app/features/registration/registration.component.spec.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/registration/registration.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
   "src/app/features/summary/summary.component.ts": {
     "local/no-i18n-library-import": {
       "count": 1
