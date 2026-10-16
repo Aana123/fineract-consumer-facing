@@ -39,6 +39,7 @@ import org.apache.fineract.consumer.infrastructure.stepup.data.StepUpConstants;
 import org.apache.fineract.consumer.infrastructure.stepup.service.StepUpTokenService;
 import org.apache.fineract.consumer.infrastructure.web.service.EmailMaskingService;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
+import org.apache.fineract.consumer.infrastructure.fineractclient.data.LoanPayoffData;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
@@ -51,6 +52,8 @@ import org.apache.fineract.consumer.transfers.command.exception.TransferAccessDe
 import org.apache.fineract.consumer.transfers.command.exception.TransferBeneficiaryLimitExceededException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferInProgressException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferInvalidException;
+import org.apache.fineract.consumer.transfers.command.exception.TransferLoanNotActiveException;
+import org.apache.fineract.consumer.transfers.command.exception.TransferLoanOverpaymentException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferNotFoundException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferStepUpInvalidException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferUpstreamUnavailableException;
@@ -191,6 +194,7 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
             if (!accessPolicyEvaluator.ownsResource(jwt, ResourceType.LOANS, toAccountId)) {
                 throw new TransferAccessDeniedException();
             }
+            requireWithinOutstanding(toAccountId, amount);
             return;
         }
         Optional<BeneficiaryQueryData> beneficiary = beneficiariesQueryService.findActiveByAccount(userId, toAccountId);
@@ -203,6 +207,20 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
         }
         if (!accessPolicyEvaluator.ownsResource(jwt, ResourceType.SAVINGS, toAccountId)) {
             throw new TransferAccessDeniedException();
+        }
+    }
+
+    private void requireWithinOutstanding(Long loanId, BigDecimal amount) {
+        LoanPayoffData payoff = call(() -> transferFineractClient.getLoanPayoff(loanId));
+        if (payoff == null || !payoff.isActive()) {
+            throw new TransferLoanNotActiveException();
+        }
+        BigDecimal outstanding = payoff.getPayoffAmount();
+        if (outstanding == null || outstanding.signum() <= 0) {
+            throw new TransferLoanNotActiveException();
+        }
+        if (amount.compareTo(outstanding) > 0) {
+            throw new TransferLoanOverpaymentException();
         }
     }
 

@@ -24,6 +24,10 @@ Feature: Consumer transfers
     When I transfer money from my savings account to my loan
     Then the transfer is accepted with a transfer id
 
+  Scenario: Initiating a transfer to my loan exceeding the payoff amount is rejected
+    When I initiate a transfer to my loan exceeding the payoff amount
+    Then the transfer request is rejected as unprocessable
+
   Scenario: Transferring to a loan I do not own is denied
     Given another client owns a loan I can target
     When I initiate a transfer to the other client's loan

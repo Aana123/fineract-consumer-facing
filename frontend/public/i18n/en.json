@@ -570,5 +570,7 @@
   "error.msg.consumer.openbanking.consent.invalid": "This consent does not permit that request.",
   "error.msg.consumer.openbanking.account.not.found": "Account not found.",
   "error.msg.consumer.authentication.kyc.revoked": "Your identity verification is no longer valid. Please contact support.",
-  "error.msg.consumer.summary.upstream.unavailable": "Account summary is temporarily unavailable."
+  "error.msg.consumer.summary.upstream.unavailable": "Account summary is temporarily unavailable.",
+  "error.msg.consumer.transfers.command.loan.overpayment": "The amount exceeds your loan's outstanding balance.",
+  "error.msg.consumer.transfers.command.loan.not.active": "This loan can't receive a repayment right now."
 }
