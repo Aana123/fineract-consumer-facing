@@ -30,12 +30,8 @@ import org.apache.fineract.consumer.beneficiaries.query.service.BeneficiariesQue
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.data.ResourceType;
 import org.apache.fineract.consumer.infrastructure.fineractclient.service.FineractCaller;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.AccountTransfersApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.SavingsAccountApi;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.TransferFineractClient;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.AccountTransferRequest;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostAccountTransfersResponse;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountData;
 import org.apache.fineract.consumer.infrastructure.idempotency.service.IdempotencyKeyDeriver;
 import org.apache.fineract.consumer.infrastructure.idempotency.service.IdempotencyKeyHolder;
 import org.apache.fineract.consumer.infrastructure.jwt.data.IssuedJwt;
@@ -72,9 +68,7 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
     private final BeneficiariesQueryService beneficiariesQueryService;
     private final OtpService otpService;
     private final StepUpTokenService stepUpTokenService;
-    private final ClientApi clientApi;
-    private final SavingsAccountApi savingsAccountApi;
-    private final AccountTransfersApi accountTransfersApi;
+    private final TransferFineractClient transferFineractClient;
     private final IdempotencyKeyHolder idempotencyKeyHolder;
 
     @Override
@@ -136,7 +130,7 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
 
         idempotencyKeyHolder.set(IdempotencyKeyDeriver.derive(publicId, command.getIdempotencyKey()));
         try {
-            Long callerOfficeId = call(() -> clientApi.retrieveOneClient(callerClientId, false)).getOfficeId();
+            Long callerOfficeId = call(() -> transferFineractClient.getClientOfficeId(callerClientId));
 
             Long toClientId;
             Long toOfficeId;
@@ -144,11 +138,10 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
                 toClientId = callerClientId;
                 toOfficeId = callerOfficeId;
             } else {
-                SavingsAccountData destination =
-                        call(() -> savingsAccountApi.retrieveSavingsAccount(command.getToAccountId(), null, null, null));
-                Long destinationClientId = destination.getClientId();
+                Long destinationClientId =
+                        call(() -> transferFineractClient.getSavingsAccountClientId(command.getToAccountId()));
                 toClientId = destinationClientId;
-                toOfficeId = call(() -> clientApi.retrieveOneClient(destinationClientId, false)).getOfficeId();
+                toOfficeId = call(() -> transferFineractClient.getClientOfficeId(destinationClientId));
             }
 
             AccountTransferRequest request = new AccountTransferRequest()
@@ -166,10 +159,10 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
                     .locale(TransferConstants.LOCALE)
                     .transferDescription(TransferConstants.DEFAULT_DESCRIPTION);
 
-            PostAccountTransfersResponse response = callWrite(() -> accountTransfersApi.createAccountTransfer(request));
+            Long transferId = callWrite(() -> transferFineractClient.createAccountTransfer(request));
 
             return TransferCommandData.builder()
-                    .transferId(response.getResourceId())
+                    .transferId(transferId)
                     .fromAccountId(command.getFromAccountId())
                     .toAccountId(command.getToAccountId())
                     .amount(command.getAmount())
