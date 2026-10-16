@@ -17,23 +17,27 @@
  * under the License.
  */
 
-const DEVICE_ID_STORAGE_KEY = 'bff.device-id';
+import { inject, Injectable } from '@angular/core';
+import { STORAGE } from '../adapters';
 
-let deviceId: string | null = null;
-
-export function deviceFingerprint(): string {
-  if (deviceId) {
-    return deviceId;
-  }
-  try {
-    let stored = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
-    if (!stored) {
-      stored = crypto.randomUUID();
-      localStorage.setItem(DEVICE_ID_STORAGE_KEY, stored);
+@Injectable({ providedIn: 'root' })
+export class DeviceFingerprint {
+  private readonly storage = inject(STORAGE);
+  private deviceId: string | null = null;
+  get(): string {
+    if (this.deviceId) {
+      return this.deviceId;
     }
-    deviceId = stored;
-  } catch {
-    deviceId = crypto.randomUUID();
+    try {
+      let stored = this.storage.read('deviceId');
+      if (!stored) {
+        stored = crypto.randomUUID();
+        this.storage.write('deviceId', stored);
+      }
+      this.deviceId = stored;
+    } catch {
+      this.deviceId = crypto.randomUUID();
+    }
+    return this.deviceId;
   }
-  return deviceId;
 }

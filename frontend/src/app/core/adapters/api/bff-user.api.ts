@@ -21,7 +21,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { UserCommandControllerService, UserQueryControllerService } from '@bff/client';
 import type { UserChargesQueryResponse } from '@bff/client';
-import { deviceFingerprint } from '../../auth/device-fingerprint';
+import { DeviceFingerprint } from '../../auth/device-fingerprint';
 import type {
   ChargesFilter,
   ConfirmPasswordChangeCommandRequest,
@@ -46,6 +46,7 @@ export function mapUserCharges(response: UserChargesQueryResponse): UserChargesP
 export class BffUserApi implements UserApi {
   private readonly query = inject(UserQueryControllerService);
   private readonly command = inject(UserCommandControllerService);
+  private readonly fingerprint = inject(DeviceFingerprint);
 
   getProfile(): Observable<UserProfileQueryData> {
     return this.query.getUserProfile();
@@ -62,20 +63,20 @@ export class BffUserApi implements UserApi {
   }
 
   forgotPassword(request: ForgotPasswordCommandRequest): Observable<unknown> {
-    return this.command.forgotPassword(deviceFingerprint(), request);
+    return this.command.forgotPassword(this.fingerprint.get(), request);
   }
 
   resetPassword(request: ResetPasswordCommandRequest): Observable<unknown> {
-    return this.command.resetPassword(deviceFingerprint(), request);
+    return this.command.resetPassword(this.fingerprint.get(), request);
   }
 
   initiatePasswordChange(
     request: InitiatePasswordChangeCommandRequest,
   ): Observable<UserPasswordChangeChallengeCommandData> {
-    return this.command.initiatePasswordChange(deviceFingerprint(), request);
+    return this.command.initiatePasswordChange(this.fingerprint.get(), request);
   }
 
   confirmPasswordChange(request: ConfirmPasswordChangeCommandRequest): Observable<unknown> {
-    return this.command.confirmPasswordChange(deviceFingerprint(), request);
+    return this.command.confirmPasswordChange(this.fingerprint.get(), request);
   }
 }

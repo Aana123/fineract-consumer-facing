@@ -16,29 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 import { inject, Injectable } from '@angular/core';
-import { TranslateService } from '@ngx-translate/core';
-
-const STORAGE_KEY = 'app.lang';
+import { I18N, STORAGE } from '../adapters';
 
 @Injectable({ providedIn: 'root' })
 export class I18nService {
-  private readonly delegate = inject(TranslateService);
+  private readonly i18n = inject(I18N);
+  private readonly storage = inject(STORAGE);
 
   constructor() {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = this.storage.read('language');
     if (stored) {
-      this.delegate.use(stored);
+      this.i18n.use(stored);
     }
   }
 
   translate(key: string, params?: Record<string, unknown>): string {
-    return this.delegate.instant(key, params);
+    return this.i18n.translate(key, params);
   }
 
   use(languageCode: string): void {
-    this.delegate.use(languageCode);
-    localStorage.setItem(STORAGE_KEY, languageCode);
+    this.i18n.use(languageCode);
+    this.storage.write('language', languageCode);
   }
 }

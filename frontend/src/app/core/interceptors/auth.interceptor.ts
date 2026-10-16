@@ -17,17 +17,19 @@
  * under the License.
  */
 
+import { inject } from '@angular/core';
 import { HttpInterceptorFn } from '@angular/common/http';
-import { deviceFingerprint } from '../auth/device-fingerprint';
+import { DeviceFingerprint } from '../auth/device-fingerprint';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (!req.url.startsWith('/api')) {
     return next(req);
   }
+  const fingerprint = inject(DeviceFingerprint);
   return next(
     req.clone({
       setHeaders: {
-        'X-Device-Fingerprint': deviceFingerprint(),
+        'X-Device-Fingerprint': fingerprint.get(),
       },
     }),
   );

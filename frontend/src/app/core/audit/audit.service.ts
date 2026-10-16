@@ -17,9 +17,9 @@
  * under the License.
  */
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import type { AuditEventCommandRequest, SubmitAuditEventsCommandRequest } from '../adapters';
-import { deviceFingerprint } from '../auth/device-fingerprint';
+import { DeviceFingerprint } from '../auth/device-fingerprint';
 import { generateCorrelationId } from '../interceptors/correlation-id.interceptor';
 
 export const AUDIT_EVENTS_PATH = '/api/v1/audit/events';
@@ -35,6 +35,7 @@ const MAX_CONSECUTIVE_FAILURES = 3;
 
 @Injectable({ providedIn: 'root' })
 export class AuditService {
+  private readonly fingerprint = inject(DeviceFingerprint);
   private readonly buffer: AuditEventCommandRequest[] = [];
   private consecutiveFailures = 0;
   private flushing = false;
@@ -77,7 +78,7 @@ export class AuditService {
       keepalive: true,
       headers: {
         'Content-Type': 'application/json',
-        'X-Device-Fingerprint': deviceFingerprint(),
+        'X-Device-Fingerprint': this.fingerprint.get(),
         'X-Correlation-ID': generateCorrelationId(),
       },
       body: JSON.stringify(body),
