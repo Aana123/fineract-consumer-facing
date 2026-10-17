@@ -106,8 +106,9 @@ public class RegistrationSteps {
     }
 
     @Then("the code request is refused because registration is already complete")
+    @Then("the replay is refused because registration is already complete")
     public void codeRequestRefusedAsComplete() {
-        assertThat(lastError).as("expected the code request to be refused, got success").isNotNull();
+        assertThat(lastError).as("expected the request to be refused, got success").isNotNull();
         assertThat(lastError.status()).isEqualTo(409);
         assertThat(readCode(lastError.contentUTF8())).isEqualTo(RegistrationNotPendingException.CODE);
     }

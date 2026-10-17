@@ -187,7 +187,7 @@ class AuthenticationCommandServiceImplTest {
 
             LoginChallengeCommandData challenge = service.login(loginCommand());
 
-            verify(otpService).createOtp(PUBLIC_ID, OtpDestination.builder()
+            verify(otpService).createOtp(PUBLIC_ID, OtpPurpose.LOGIN_TWO_FACTOR, OtpDestination.builder()
                     .deliveryMethod(OtpConstants.EMAIL_DELIVERY_METHOD_NAME)
                     .target(EMAIL)
                     .build());

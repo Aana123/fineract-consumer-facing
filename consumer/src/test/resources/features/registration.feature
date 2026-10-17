@@ -34,10 +34,13 @@ Feature: Consumer registration
     Then registration is rejected
     And the rejection does not reveal which field failed
 
-  Scenario: Replaying a verified OTP is rejected
+  # The code itself is single-use — OtpServiceImplTest and login.feature pin that directly. What
+  # this asserts is that a replay cannot re-bind the account: since the OTP steps require
+  # PENDING_OTP, the state guard refuses the replay before the spent code is even looked at.
+  Scenario: Replaying a verified OTP cannot re-bind the account
     When I complete an OTP verification successfully
     And I verify the same OTP a second time
-    Then the OTP is rejected as invalid
+    Then the replay is refused because registration is already complete
 
   Scenario: Verifying a wrong OTP is rejected
     When I submit registration with the matching Passport
