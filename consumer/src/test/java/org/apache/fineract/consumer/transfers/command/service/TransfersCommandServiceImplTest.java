@@ -46,13 +46,9 @@ import org.apache.fineract.consumer.beneficiaries.query.service.BeneficiariesQue
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.data.ResourceType;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.AccountTransfersApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.SavingsAccountApi;
+import org.apache.fineract.consumer.infrastructure.fineractclient.data.LoanPayoffData;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.TransferFineractClient;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.AccountTransferRequest;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdResponse;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostAccountTransfersResponse;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountData;
 import org.apache.fineract.consumer.infrastructure.idempotency.service.IdempotencyKeyDeriver;
 import org.apache.fineract.consumer.infrastructure.idempotency.service.IdempotencyKeyHolder;
 import org.apache.fineract.consumer.infrastructure.jwt.data.IssuedJwt;
@@ -69,6 +65,8 @@ import org.apache.fineract.consumer.transfers.command.exception.TransferAccessDe
 import org.apache.fineract.consumer.transfers.command.exception.TransferBeneficiaryLimitExceededException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferInProgressException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferInvalidException;
+import org.apache.fineract.consumer.transfers.command.exception.TransferLoanNotActiveException;
+import org.apache.fineract.consumer.transfers.command.exception.TransferLoanOverpaymentException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferStepUpInvalidException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferUpstreamUnavailableException;
 import org.apache.fineract.consumer.user.query.data.UserStatus;
@@ -124,13 +122,7 @@ class TransfersCommandServiceImplTest {
     private StepUpTokenService stepUpTokenService;
 
     @Mock
-    private ClientApi clientApi;
-
-    @Mock
-    private SavingsAccountApi savingsAccountApi;
-
-    @Mock
-    private AccountTransfersApi accountTransfersApi;
+    private TransferFineractClient transferFineractClient;
 
     @Mock
     private IdempotencyKeyHolder idempotencyKeyHolder;
@@ -180,25 +172,47 @@ class TransfersCommandServiceImplTest {
     }
 
     private static InitiateTransferCommand initiateLoanCommand() {
+        return initiateLoanCommand(AMOUNT);
+    }
+
+    private static InitiateTransferCommand initiateLoanCommand(BigDecimal amount) {
         return InitiateTransferCommand.builder()
                 .fromAccountId(FROM_SAVINGS_ID)
                 .toAccountId(TO_LOAN_ID)
                 .toAccountType(TransferConstants.LOAN_TYPE_NAME)
-                .amount(AMOUNT)
+                .amount(amount)
                 .deviceFingerprint(DEVICE_FINGERPRINT)
                 .build();
     }
 
     private static ConfirmTransferCommand confirmLoanCommand() {
+        return confirmLoanCommand(AMOUNT);
+    }
+
+    private static ConfirmTransferCommand confirmLoanCommand(BigDecimal amount) {
         return ConfirmTransferCommand.builder()
                 .stepUpToken(STEP_UP_TOKEN)
                 .otp(OTP)
                 .fromAccountId(FROM_SAVINGS_ID)
                 .toAccountId(TO_LOAN_ID)
                 .toAccountType(TransferConstants.LOAN_TYPE_NAME)
-                .amount(AMOUNT)
+                .amount(amount)
                 .deviceFingerprint(DEVICE_FINGERPRINT)
                 .idempotencyKey(IDEMPOTENCY_KEY)
+                .build();
+    }
+
+    private static LoanPayoffData activeLoanPayoff(BigDecimal payoffAmount) {
+        return LoanPayoffData.builder()
+                .active(true)
+                .payoffAmount(payoffAmount)
+                .build();
+    }
+
+    private static LoanPayoffData inactiveLoanPayoff(BigDecimal payoffAmount) {
+        return LoanPayoffData.builder()
+                .active(false)
+                .payoffAmount(payoffAmount)
                 .build();
     }
 
@@ -234,12 +248,9 @@ class TransfersCommandServiceImplTest {
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
         when(beneficiariesQueryService.findActiveByAccount(USER_ID, TO_SAVINGS_ID))
                 .thenReturn(Optional.of(beneficiary(BENEFICIARY_LIMIT_ABOVE_AMOUNT)));
-        when(clientApi.retrieveOneClient(CLIENT_ID, false))
-                .thenReturn(new GetClientsClientIdResponse().officeId(CALLER_OFFICE_ID));
-        when(clientApi.retrieveOneClient(DEST_CLIENT_ID, false))
-                .thenReturn(new GetClientsClientIdResponse().officeId(DEST_OFFICE_ID));
-        when(savingsAccountApi.retrieveSavingsAccount(TO_SAVINGS_ID, null, null, null))
-                .thenReturn(new SavingsAccountData().clientId(DEST_CLIENT_ID).officeId(DEST_OFFICE_ID));
+        when(transferFineractClient.getClientOfficeId(CLIENT_ID)).thenReturn(CALLER_OFFICE_ID);
+        when(transferFineractClient.getSavingsAccountClientId(TO_SAVINGS_ID)).thenReturn(DEST_CLIENT_ID);
+        when(transferFineractClient.getClientOfficeId(DEST_CLIENT_ID)).thenReturn(DEST_OFFICE_ID);
     }
 
     private void stubSavingsFingerprintAndIssue() {
@@ -297,6 +308,7 @@ class TransfersCommandServiceImplTest {
     void initiateAllowsOwnLoanDestination() {
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
         when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(activeLoanPayoff(new BigDecimal("500.00")));
         Instant expiresAt = Instant.now().plusSeconds(300);
         when(stepUpTokenService.actionFingerprint(
                 TransferConstants.ENDPOINT, FROM_SAVINGS_ID, TO_LOAN_ID, TransferConstants.LOAN_TYPE_CODE, AMOUNT))
@@ -311,6 +323,65 @@ class TransfersCommandServiceImplTest {
     }
 
     @Test
+    void initiateAllowsOwnLoanDestinationWhenAmountEqualsOutstanding() {
+        when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
+        when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(activeLoanPayoff(AMOUNT));
+        Instant expiresAt = Instant.now().plusSeconds(300);
+        when(stepUpTokenService.actionFingerprint(
+                TransferConstants.ENDPOINT, FROM_SAVINGS_ID, TO_LOAN_ID, TransferConstants.LOAN_TYPE_CODE, AMOUNT))
+                .thenReturn(ACTION_FINGERPRINT);
+        when(stepUpTokenService.issue(eq(PUBLIC_ID), eq(DEVICE_FINGERPRINT), eq(ACTION_FINGERPRINT), any()))
+                .thenReturn(IssuedJwt.builder().tokenValue(STEP_UP_TOKEN).expiresAt(expiresAt).build());
+
+        service.initiate(jwt(), initiateLoanCommand(AMOUNT));
+
+        verify(otpService).createOtp(eq(PUBLIC_ID), any());
+    }
+
+    @Test
+    void initiateDeniedWhenLoanPaymentExceedsOutstanding() {
+        when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
+        when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(activeLoanPayoff(new BigDecimal("50.00")));
+
+        assertThatThrownBy(() -> service.initiate(jwt(), initiateLoanCommand(AMOUNT)))
+                .isInstanceOf(TransferLoanOverpaymentException.class)
+                .hasFieldOrPropertyWithValue("code", TransferLoanOverpaymentException.CODE);
+
+        verify(otpService, never()).createOtp(any(), any());
+        verify(stepUpTokenService, never()).issue(any(), any(), any(), any());
+    }
+
+    @Test
+    void initiateDeniedWhenLoanNotActive() {
+        when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
+        when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(inactiveLoanPayoff(new BigDecimal("500.00")));
+
+        assertThatThrownBy(() -> service.initiate(jwt(), initiateLoanCommand()))
+                .isInstanceOf(TransferLoanNotActiveException.class)
+                .hasFieldOrPropertyWithValue("code", TransferLoanNotActiveException.CODE);
+
+        verify(otpService, never()).createOtp(any(), any());
+        verify(stepUpTokenService, never()).issue(any(), any(), any(), any());
+    }
+
+    @Test
+    void initiateDeniedWhenLoanHasNoOutstandingBalance() {
+        when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
+        when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(activeLoanPayoff(BigDecimal.ZERO));
+
+        assertThatThrownBy(() -> service.initiate(jwt(), initiateLoanCommand()))
+                .isInstanceOf(TransferLoanNotActiveException.class)
+                .hasFieldOrPropertyWithValue("code", TransferLoanNotActiveException.CODE);
+
+        verify(otpService, never()).createOtp(any(), any());
+        verify(stepUpTokenService, never()).issue(any(), any(), any(), any());
+    }
+
+    @Test
     void initiateDeniedWhenLoanDestinationNotOwned() {
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
         when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(false);
@@ -319,6 +390,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferAccessDeniedException.class)
                 .hasFieldOrPropertyWithValue("code", TransferAccessDeniedException.CODE);
 
+        verify(transferFineractClient, never()).getLoanPayoff(any());
         verify(beneficiariesQueryService, never()).findActiveByAccount(any(), any());
         verify(otpService, never()).createOtp(any(), any());
     }
@@ -431,14 +503,10 @@ class TransfersCommandServiceImplTest {
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
         when(beneficiariesQueryService.findActiveByAccount(USER_ID, TO_SAVINGS_ID))
                 .thenReturn(Optional.of(beneficiary(BENEFICIARY_LIMIT_ABOVE_AMOUNT)));
-        when(clientApi.retrieveOneClient(CLIENT_ID, false))
-                .thenReturn(new GetClientsClientIdResponse().officeId(CALLER_OFFICE_ID));
-        when(clientApi.retrieveOneClient(DEST_CLIENT_ID, false))
-                .thenReturn(new GetClientsClientIdResponse().officeId(DEST_OFFICE_ID));
-        when(savingsAccountApi.retrieveSavingsAccount(TO_SAVINGS_ID, null, null, null))
-                .thenReturn(new SavingsAccountData().clientId(DEST_CLIENT_ID).officeId(DEST_OFFICE_ID));
-        when(accountTransfersApi.createAccountTransfer(any()))
-                .thenReturn(new PostAccountTransfersResponse().resourceId(TRANSFER_ID));
+        when(transferFineractClient.getClientOfficeId(CLIENT_ID)).thenReturn(CALLER_OFFICE_ID);
+        when(transferFineractClient.getSavingsAccountClientId(TO_SAVINGS_ID)).thenReturn(DEST_CLIENT_ID);
+        when(transferFineractClient.getClientOfficeId(DEST_CLIENT_ID)).thenReturn(DEST_OFFICE_ID);
+        when(transferFineractClient.createAccountTransfer(any())).thenReturn(TRANSFER_ID);
 
         TransferCommandData result = service.confirm(jwt(), confirmSavingsCommand());
 
@@ -450,7 +518,7 @@ class TransfersCommandServiceImplTest {
         verify(accessPolicyEvaluator).authorize(any(), eq(ConsumerAction.TRANSFER_EXECUTE), eq(FROM_SAVINGS_ID), any());
 
         ArgumentCaptor<AccountTransferRequest> request = ArgumentCaptor.forClass(AccountTransferRequest.class);
-        verify(accountTransfersApi).createAccountTransfer(request.capture());
+        verify(transferFineractClient).createAccountTransfer(request.capture());
         AccountTransferRequest sent = request.getValue();
         assertThat(sent.getFromOfficeId()).isEqualTo("1");
         assertThat(sent.getFromClientId()).isEqualTo("42");
@@ -474,10 +542,9 @@ class TransfersCommandServiceImplTest {
         when(stepUpTokenService.verify(STEP_UP_TOKEN, PUBLIC_ID, DEVICE_FINGERPRINT, ACTION_FINGERPRINT)).thenReturn(true);
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
         when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
-        when(clientApi.retrieveOneClient(CLIENT_ID, false))
-                .thenReturn(new GetClientsClientIdResponse().officeId(CALLER_OFFICE_ID));
-        when(accountTransfersApi.createAccountTransfer(any()))
-                .thenReturn(new PostAccountTransfersResponse().resourceId(TRANSFER_ID));
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(activeLoanPayoff(new BigDecimal("500.00")));
+        when(transferFineractClient.getClientOfficeId(CLIENT_ID)).thenReturn(CALLER_OFFICE_ID);
+        when(transferFineractClient.createAccountTransfer(any())).thenReturn(TRANSFER_ID);
 
         TransferCommandData result = service.confirm(jwt(), confirmLoanCommand());
 
@@ -485,12 +552,64 @@ class TransfersCommandServiceImplTest {
         assertThat(result.getToAccountId()).isEqualTo(TO_LOAN_ID);
 
         ArgumentCaptor<AccountTransferRequest> request = ArgumentCaptor.forClass(AccountTransferRequest.class);
-        verify(accountTransfersApi).createAccountTransfer(request.capture());
+        verify(transferFineractClient).createAccountTransfer(request.capture());
         AccountTransferRequest sent = request.getValue();
         assertThat(sent.getToAccountType()).isEqualTo(TransferConstants.LOAN_TYPE_CODE);
         assertThat(sent.getToClientId()).isEqualTo(String.valueOf(CLIENT_ID));
         assertThat(sent.getToOfficeId()).isEqualTo(String.valueOf(CALLER_OFFICE_ID));
         verify(beneficiariesQueryService, never()).findActiveByAccount(any(), any());
+    }
+
+    @Test
+    void confirmAllowsOwnLoanDestinationWhenAmountEqualsOutstanding() {
+        when(stepUpTokenService.actionFingerprint(
+                TransferConstants.ENDPOINT, FROM_SAVINGS_ID, TO_LOAN_ID, TransferConstants.LOAN_TYPE_CODE, AMOUNT))
+                .thenReturn(ACTION_FINGERPRINT);
+        when(stepUpTokenService.verify(STEP_UP_TOKEN, PUBLIC_ID, DEVICE_FINGERPRINT, ACTION_FINGERPRINT)).thenReturn(true);
+        when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
+        when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(activeLoanPayoff(AMOUNT));
+        when(transferFineractClient.getClientOfficeId(CLIENT_ID)).thenReturn(CALLER_OFFICE_ID);
+        when(transferFineractClient.createAccountTransfer(any())).thenReturn(TRANSFER_ID);
+
+        TransferCommandData result = service.confirm(jwt(), confirmLoanCommand(AMOUNT));
+
+        assertThat(result.getTransferId()).isEqualTo(TRANSFER_ID);
+        assertThat(result.getToAccountId()).isEqualTo(TO_LOAN_ID);
+    }
+
+    @Test
+    void confirmDeniedWhenLoanPaymentExceedsOutstanding() {
+        when(stepUpTokenService.actionFingerprint(
+                TransferConstants.ENDPOINT, FROM_SAVINGS_ID, TO_LOAN_ID, TransferConstants.LOAN_TYPE_CODE, AMOUNT))
+                .thenReturn(ACTION_FINGERPRINT);
+        when(stepUpTokenService.verify(STEP_UP_TOKEN, PUBLIC_ID, DEVICE_FINGERPRINT, ACTION_FINGERPRINT)).thenReturn(true);
+        when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
+        when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(activeLoanPayoff(new BigDecimal("50.00")));
+
+        assertThatThrownBy(() -> service.confirm(jwt(), confirmLoanCommand()))
+                .isInstanceOf(TransferLoanOverpaymentException.class)
+                .hasFieldOrPropertyWithValue("code", TransferLoanOverpaymentException.CODE);
+
+        verify(transferFineractClient, never()).createAccountTransfer(any());
+    }
+
+    @Test
+    void confirmDeniedWhenLoanNotActive() {
+        when(stepUpTokenService.actionFingerprint(
+                TransferConstants.ENDPOINT, FROM_SAVINGS_ID, TO_LOAN_ID, TransferConstants.LOAN_TYPE_CODE, AMOUNT))
+                .thenReturn(ACTION_FINGERPRINT);
+        when(stepUpTokenService.verify(STEP_UP_TOKEN, PUBLIC_ID, DEVICE_FINGERPRINT, ACTION_FINGERPRINT)).thenReturn(true);
+        when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
+        when(accessPolicyEvaluator.ownsResource(any(), eq(ResourceType.LOANS), eq(TO_LOAN_ID))).thenReturn(true);
+        when(transferFineractClient.getLoanPayoff(TO_LOAN_ID)).thenReturn(inactiveLoanPayoff(new BigDecimal("500.00")));
+
+        assertThatThrownBy(() -> service.confirm(jwt(), confirmLoanCommand()))
+                .isInstanceOf(TransferLoanNotActiveException.class)
+                .hasFieldOrPropertyWithValue("code", TransferLoanNotActiveException.CODE);
+
+        verify(transferFineractClient, never()).createAccountTransfer(any());
     }
 
     @Test
@@ -506,8 +625,9 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferAccessDeniedException.class)
                 .hasFieldOrPropertyWithValue("code", TransferAccessDeniedException.CODE);
 
+        verify(transferFineractClient, never()).getLoanPayoff(any());
         verify(beneficiariesQueryService, never()).findActiveByAccount(any(), any());
-        verify(accountTransfersApi, never()).createAccountTransfer(any());
+        verify(transferFineractClient, never()).createAccountTransfer(any());
     }
 
     @Test
@@ -524,7 +644,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferBeneficiaryLimitExceededException.class)
                 .hasFieldOrPropertyWithValue("code", TransferBeneficiaryLimitExceededException.CODE);
 
-        verify(accountTransfersApi, never()).createAccountTransfer(any());
+        verify(transferFineractClient, never()).createAccountTransfer(any());
     }
 
     @Test
@@ -544,7 +664,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferBeneficiaryLimitExceededException.class)
                 .hasFieldOrPropertyWithValue("code", TransferBeneficiaryLimitExceededException.CODE);
 
-        verify(accountTransfersApi, never()).createAccountTransfer(any());
+        verify(transferFineractClient, never()).createAccountTransfer(any());
     }
 
     @Test
@@ -558,7 +678,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferStepUpInvalidException.class)
                 .hasFieldOrPropertyWithValue("code", TransferStepUpInvalidException.CODE);
 
-        verify(accountTransfersApi, never()).createAccountTransfer(any());
+        verify(transferFineractClient, never()).createAccountTransfer(any());
     }
 
     @Test
@@ -574,27 +694,26 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferStepUpInvalidException.class)
                 .hasFieldOrPropertyWithValue("code", TransferStepUpInvalidException.CODE);
 
-        verify(accountTransfersApi, never()).createAccountTransfer(any());
+        verify(transferFineractClient, never()).createAccountTransfer(any());
     }
 
     @Test
     void confirmSetsDerivedIdempotencyKeyBeforeUpstreamWriteAndClearsAfter() {
         stubConfirmUpToUpstreamWrite();
-        when(accountTransfersApi.createAccountTransfer(any()))
-                .thenReturn(new PostAccountTransfersResponse().resourceId(TRANSFER_ID));
+        when(transferFineractClient.createAccountTransfer(any())).thenReturn(TRANSFER_ID);
 
         service.confirm(jwt(), confirmSavingsCommand());
 
-        InOrder inOrder = inOrder(idempotencyKeyHolder, accountTransfersApi);
+        InOrder inOrder = inOrder(idempotencyKeyHolder, transferFineractClient);
         inOrder.verify(idempotencyKeyHolder).set(IdempotencyKeyDeriver.derive(PUBLIC_ID, IDEMPOTENCY_KEY));
-        inOrder.verify(accountTransfersApi).createAccountTransfer(any());
+        inOrder.verify(transferFineractClient).createAccountTransfer(any());
         inOrder.verify(idempotencyKeyHolder).clear();
     }
 
     @Test
     void confirmClearsIdempotencyKeyWhenUpstreamFails() {
         stubConfirmUpToUpstreamWrite();
-        when(accountTransfersApi.createAccountTransfer(any())).thenThrow(feignException(503));
+        when(transferFineractClient.createAccountTransfer(any())).thenThrow(feignException(503));
 
         assertThatThrownBy(() -> service.confirm(jwt(), confirmSavingsCommand()))
                 .isInstanceOf(TransferUpstreamUnavailableException.class)
@@ -606,7 +725,7 @@ class TransfersCommandServiceImplTest {
     @Test
     void confirmTranslatesUpstreamTooEarlyToTransferInProgress() {
         stubConfirmUpToUpstreamWrite();
-        when(accountTransfersApi.createAccountTransfer(any())).thenThrow(feignException(425));
+        when(transferFineractClient.createAccountTransfer(any())).thenThrow(feignException(425));
 
         assertThatThrownBy(() -> service.confirm(jwt(), confirmSavingsCommand()))
                 .isInstanceOf(TransferInProgressException.class)

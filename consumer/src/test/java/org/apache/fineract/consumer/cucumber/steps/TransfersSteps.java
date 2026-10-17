@@ -48,17 +48,23 @@ import org.apache.fineract.consumer.cucumber.helpers.FineractSeeder;
 import org.apache.fineract.consumer.cucumber.helpers.LoginHelper;
 import org.apache.fineract.consumer.cucumber.helpers.RegistrationHelper;
 import org.apache.fineract.consumer.transfers.command.data.TransferConstants;
+import org.apache.fineract.consumer.transfers.command.exception.TransferLoanOverpaymentException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 public class TransfersSteps {
 
     private static final String DEVICE_FINGERPRINT = "cucumber-transfers-device";
     private static final int UNAUTHORIZED = 401;
     private static final int FORBIDDEN = 403;
+    private static final int UNPROCESSABLE_ENTITY = 422;
     private static final BigDecimal DEPOSIT_AMOUNT = new BigDecimal("1000.00");
     private static final BigDecimal TRANSFER_AMOUNT = new BigDecimal("100.00");
+    private static final BigDecimal OVERPAYMENT_AMOUNT = new BigDecimal("1000000.00");
     private static final String BENEFICIARY_NAME = "Cuke Transfer Beneficiary";
     private static final Integer FIRST_PAGE = 0;
     private static final Integer PAGE_SIZE = 20;
+    private static final ObjectMapper JSON = JsonMapper.builder().build();
 
     private final RegistrationHelper registrationHelper = new RegistrationHelper();
     private final FineractSeeder fineractSeeder = new FineractSeeder();
@@ -76,6 +82,7 @@ public class TransfersSteps {
     private TransferCommandData transferResult;
     private TransferCommandData secondTransferResult;
     private int errorStatus;
+    private FeignException lastError;
 
     @Given("a logged-in customer with a funded savings account and a loan")
     public void loggedInCustomerWithFundedSavingsAndLoan() {
@@ -92,6 +99,24 @@ public class TransfersSteps {
     @When("I transfer money from my savings account to my loan")
     public void transferSavingsToLoan() {
         transferResult = confirmTransferToLoan(UUID.randomUUID().toString());
+    }
+
+    @When("I initiate a transfer to my loan exceeding the payoff amount")
+    public void initiateTransferExceedingPayoff() {
+        lastError = captureError(() -> transfersApi.initiateTransfer(DEVICE_FINGERPRINT,
+                new InitiateTransferCommandRequest()
+                        .fromAccountId(user.savingsAccountId())
+                        .toAccountId(user.loanAccountId())
+                        .toAccountType(TransferConstants.LOAN_TYPE_NAME)
+                        .amount(OVERPAYMENT_AMOUNT)));
+    }
+
+    @Then("the transfer request is rejected as unprocessable")
+    public void transferRejectedUnprocessable() {
+        assertThat(lastError).isNotNull();
+        assertThat(lastError.status()).isEqualTo(UNPROCESSABLE_ENTITY);
+        assertThat(readCode(lastError.contentUTF8()))
+                .isEqualTo(TransferLoanOverpaymentException.CODE);
     }
 
     @Given("another client owns a savings account I registered as a beneficiary")
@@ -303,6 +328,23 @@ public class TransfersSteps {
             throw new AssertionError("Expected the request to be rejected, but it succeeded");
         } catch (FeignException e) {
             return e.status();
+        }
+    }
+
+    private static FeignException captureError(Runnable call) {
+        try {
+            call.run();
+            throw new AssertionError("Expected the request to be rejected, but it succeeded");
+        } catch (FeignException e) {
+            return e;
+        }
+    }
+
+    private static String readCode(String body) {
+        try {
+            return JSON.readTree(body).path("code").asString();
+        } catch (Exception e) {
+            throw new IllegalStateException("could not parse error response body: " + body, e);
         }
     }
 

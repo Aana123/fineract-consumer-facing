@@ -30,12 +30,8 @@ import org.apache.fineract.consumer.beneficiaries.query.service.BeneficiariesQue
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.data.ResourceType;
 import org.apache.fineract.consumer.infrastructure.fineractclient.service.FineractCaller;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.AccountTransfersApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.SavingsAccountApi;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.TransferFineractClient;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.AccountTransferRequest;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostAccountTransfersResponse;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountData;
 import org.apache.fineract.consumer.infrastructure.idempotency.service.IdempotencyKeyDeriver;
 import org.apache.fineract.consumer.infrastructure.idempotency.service.IdempotencyKeyHolder;
 import org.apache.fineract.consumer.infrastructure.jwt.data.IssuedJwt;
@@ -43,6 +39,7 @@ import org.apache.fineract.consumer.infrastructure.stepup.data.StepUpConstants;
 import org.apache.fineract.consumer.infrastructure.stepup.service.StepUpTokenService;
 import org.apache.fineract.consumer.infrastructure.web.service.EmailMaskingService;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
+import org.apache.fineract.consumer.infrastructure.fineractclient.data.LoanPayoffData;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
@@ -55,6 +52,8 @@ import org.apache.fineract.consumer.transfers.command.exception.TransferAccessDe
 import org.apache.fineract.consumer.transfers.command.exception.TransferBeneficiaryLimitExceededException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferInProgressException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferInvalidException;
+import org.apache.fineract.consumer.transfers.command.exception.TransferLoanNotActiveException;
+import org.apache.fineract.consumer.transfers.command.exception.TransferLoanOverpaymentException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferNotFoundException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferStepUpInvalidException;
 import org.apache.fineract.consumer.transfers.command.exception.TransferUpstreamUnavailableException;
@@ -72,9 +71,7 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
     private final BeneficiariesQueryService beneficiariesQueryService;
     private final OtpService otpService;
     private final StepUpTokenService stepUpTokenService;
-    private final ClientApi clientApi;
-    private final SavingsAccountApi savingsAccountApi;
-    private final AccountTransfersApi accountTransfersApi;
+    private final TransferFineractClient transferFineractClient;
     private final IdempotencyKeyHolder idempotencyKeyHolder;
 
     @Override
@@ -136,7 +133,7 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
 
         idempotencyKeyHolder.set(IdempotencyKeyDeriver.derive(publicId, command.getIdempotencyKey()));
         try {
-            Long callerOfficeId = call(() -> clientApi.retrieveOneClient(callerClientId, false)).getOfficeId();
+            Long callerOfficeId = call(() -> transferFineractClient.getClientOfficeId(callerClientId));
 
             Long toClientId;
             Long toOfficeId;
@@ -144,11 +141,10 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
                 toClientId = callerClientId;
                 toOfficeId = callerOfficeId;
             } else {
-                SavingsAccountData destination =
-                        call(() -> savingsAccountApi.retrieveSavingsAccount(command.getToAccountId(), null, null, null));
-                Long destinationClientId = destination.getClientId();
+                Long destinationClientId =
+                        call(() -> transferFineractClient.getSavingsAccountClientId(command.getToAccountId()));
                 toClientId = destinationClientId;
-                toOfficeId = call(() -> clientApi.retrieveOneClient(destinationClientId, false)).getOfficeId();
+                toOfficeId = call(() -> transferFineractClient.getClientOfficeId(destinationClientId));
             }
 
             AccountTransferRequest request = new AccountTransferRequest()
@@ -166,10 +162,10 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
                     .locale(TransferConstants.LOCALE)
                     .transferDescription(TransferConstants.DEFAULT_DESCRIPTION);
 
-            PostAccountTransfersResponse response = callWrite(() -> accountTransfersApi.createAccountTransfer(request));
+            Long transferId = callWrite(() -> transferFineractClient.createAccountTransfer(request));
 
             return TransferCommandData.builder()
-                    .transferId(response.getResourceId())
+                    .transferId(transferId)
                     .fromAccountId(command.getFromAccountId())
                     .toAccountId(command.getToAccountId())
                     .amount(command.getAmount())
@@ -198,6 +194,7 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
             if (!accessPolicyEvaluator.ownsResource(jwt, ResourceType.LOANS, toAccountId)) {
                 throw new TransferAccessDeniedException();
             }
+            requireWithinOutstanding(toAccountId, amount);
             return;
         }
         Optional<BeneficiaryQueryData> beneficiary = beneficiariesQueryService.findActiveByAccount(userId, toAccountId);
@@ -210,6 +207,20 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
         }
         if (!accessPolicyEvaluator.ownsResource(jwt, ResourceType.SAVINGS, toAccountId)) {
             throw new TransferAccessDeniedException();
+        }
+    }
+
+    private void requireWithinOutstanding(Long loanId, BigDecimal amount) {
+        LoanPayoffData payoff = call(() -> transferFineractClient.getLoanPayoff(loanId));
+        if (payoff == null || !payoff.isActive()) {
+            throw new TransferLoanNotActiveException();
+        }
+        BigDecimal outstanding = payoff.getPayoffAmount();
+        if (outstanding == null || outstanding.signum() <= 0) {
+            throw new TransferLoanNotActiveException();
+        }
+        if (amount.compareTo(outstanding) > 0) {
+            throw new TransferLoanOverpaymentException();
         }
     }
 

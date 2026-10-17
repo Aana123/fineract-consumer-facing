@@ -570,5 +570,7 @@
   "error.msg.consumer.openbanking.consent.invalid": "यह सहमति उस अनुरोध की अनुमति नहीं देती।",
   "error.msg.consumer.openbanking.account.not.found": "खाता नहीं मिला।",
   "error.msg.consumer.authentication.kyc.revoked": "आपका पहचान सत्यापन अब मान्य नहीं है। कृपया सहायता से संपर्क करें।",
-  "error.msg.consumer.summary.upstream.unavailable": "खाता सारांश अस्थायी रूप से अनुपलब्ध है।"
+  "error.msg.consumer.summary.upstream.unavailable": "खाता सारांश अस्थायी रूप से अनुपलब्ध है।",
+  "error.msg.consumer.transfers.command.loan.overpayment": "राशि आपके ऋण की बकाया राशि से अधिक है।",
+  "error.msg.consumer.transfers.command.loan.not.active": "इस ऋण पर अभी पुनर्भुगतान प्राप्त नहीं किया जा सकता है।"
 }
