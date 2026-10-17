@@ -468,6 +468,7 @@
   "error.msg.consumer.otp.delivery.method.invalid": "वह डिलीवरी गंतव्य अमान्य है। कृपया इसे जाँचें और पुनः प्रयास करें।",
   "error.msg.consumer.otp.invalid": "वह सत्यापन कोड अमान्य है या समाप्त हो गया है।",
   "error.msg.consumer.registration.identity.not.verified": "दिए गए विवरण से हम आपकी पहचान सत्यापित नहीं कर सके।",
+  "error.msg.consumer.registration.not.pending": "यह पंजीकरण पहले ही पूरा हो चुका है। कृपया साइन इन करें।",
   "error.msg.consumer.identity.verification.unavailable": "पहचान सत्यापन अस्थायी रूप से अनुपलब्ध है। कृपया बाद में पुनः प्रयास करें।",
   "error.msg.consumer.savings.query.access.denied": "आपके पास इस बचत खाते तक पहुँच नहीं है।",
   "error.msg.consumer.savings.account.not.found": "हमें वह बचत खाता नहीं मिला।",

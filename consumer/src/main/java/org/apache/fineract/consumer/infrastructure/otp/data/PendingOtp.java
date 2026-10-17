@@ -25,10 +25,18 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
+/**
+ * A freshly minted code, on its way to delivery.
+ *
+ * <p>{@code @ToString} includes nothing by default: this is the one place the code exists in
+ * plaintext, and the metadata carries the destination address, so a stray log line anywhere on the
+ * mint path would print a live credential and a recipient. AGENTS.md requires the explicit-only
+ * form for any data class holding a secret.
+ */
 @Getter
 @RequiredArgsConstructor
 @EqualsAndHashCode
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
 public final class PendingOtp {
 
     private final String token;

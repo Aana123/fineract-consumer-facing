@@ -27,19 +27,34 @@ import io.lettuce.core.ScanCursor;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import org.apache.fineract.consumer.infrastructure.access.service.RateLimitCounter;
+import org.apache.fineract.consumer.infrastructure.kyc.service.IdentityVerificationAttemptCounter;
 
-public final class RateLimitReset {
+/**
+ * Clears the Valkey counters that throttle abuse, so one scenario's refusals cannot leak into the
+ * next. Both prefixes come from the production classes: a re-typed literal here would keep passing
+ * after the real key changed.
+ */
+public final class ValkeyCounterReset {
 
     private static final String VALKEY_URI = System.getenv().getOrDefault("VALKEY_URL", "redis://localhost:6379");
-    private static final String KEY_PATTERN = RateLimitCounter.KEY_PREFIX + "*";
+    private static final String[] KEY_PATTERNS = {
+            RateLimitCounter.KEY_PREFIX + "*",
+            IdentityVerificationAttemptCounter.KEY_PREFIX + "*"
+    };
     private static final int SCAN_LIMIT = 1000;
     private static final StatefulRedisConnection<String, String> CONNECTION =
             RedisClient.create(VALKEY_URI).connect();
 
     @Before
-    public void clearRateLimitCounters() {
+    public void clearAntiAbuseCounters() {
         RedisCommands<String, String> commands = CONNECTION.sync();
-        KeyScanCursor<String> cursor = commands.scan(ScanArgs.Builder.matches(KEY_PATTERN).limit(SCAN_LIMIT));
+        for (String pattern : KEY_PATTERNS) {
+            clear(commands, pattern);
+        }
+    }
+
+    private static void clear(RedisCommands<String, String> commands, String pattern) {
+        KeyScanCursor<String> cursor = commands.scan(ScanArgs.Builder.matches(pattern).limit(SCAN_LIMIT));
         while (true) {
             if (!cursor.getKeys().isEmpty()) {
                 commands.del(cursor.getKeys().toArray(new String[0]));
@@ -48,7 +63,7 @@ public final class RateLimitReset {
                 return;
             }
             cursor = commands.scan(ScanCursor.of(cursor.getCursor()),
-                    ScanArgs.Builder.matches(KEY_PATTERN).limit(SCAN_LIMIT));
+                    ScanArgs.Builder.matches(pattern).limit(SCAN_LIMIT));
         }
     }
 }

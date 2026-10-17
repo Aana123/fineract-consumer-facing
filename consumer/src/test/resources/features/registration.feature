@@ -34,10 +34,13 @@ Feature: Consumer registration
     Then registration is rejected
     And the rejection does not reveal which field failed
 
-  Scenario: Replaying a verified OTP is rejected
+  # The code itself is single-use — OtpServiceImplTest and login.feature pin that directly. What
+  # this asserts is that a replay cannot re-bind the account: since the OTP steps require
+  # PENDING_OTP, the state guard refuses the replay before the spent code is even looked at.
+  Scenario: Replaying a verified OTP cannot re-bind the account
     When I complete an OTP verification successfully
     And I verify the same OTP a second time
-    Then the OTP is rejected as invalid
+    Then the replay is refused because registration is already complete
 
   Scenario: Verifying a wrong OTP is rejected
     When I submit registration with the matching Passport
@@ -57,3 +60,22 @@ Feature: Consumer registration
     Then registration is accepted in PENDING_OTP state
     When I submit registration again with a different email
     Then registration is rejected as an existing user
+
+  # A client that is already spoken for must be refused before its identifier is ever checked.
+  # Checking the identifier first made the pair of answers an oracle: 403 for a wrong government ID,
+  # 409 for a right one, on a public endpoint, against a sequential client id.
+  Scenario: A client that already has a registration is refused the same way whether the identifier matches or not
+    When I submit registration with the matching Passport
+    Then registration is accepted in PENDING_OTP state
+    When I submit registration again with a different email and a non-matching Passport
+    Then registration is rejected as an existing user
+
+  Scenario: Wrong identifiers are capped, so the right one stops working too
+    When I submit registration with a non-matching Passport value until the client is locked out
+    And I submit registration with the matching Passport
+    Then registration is rejected
+
+  Scenario: A completed registration cannot be made to send another code
+    When I complete an OTP verification successfully
+    And I request an email OTP
+    Then the code request is refused because registration is already complete

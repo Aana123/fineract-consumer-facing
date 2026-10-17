@@ -33,6 +33,7 @@ import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Map;
+import org.apache.fineract.consumer.authentication.command.exception.TwoFactorInvalidException;
 import org.apache.fineract.consumer.infrastructure.access.data.AuthenticationConstants;
 import org.apache.fineract.consumer.client.api.UserCommandControllerApi;
 import org.apache.fineract.consumer.client.api.UserQueryControllerApi;
@@ -82,6 +83,7 @@ public class PasswordSteps {
     private String otp;
     private FeignException lastError;
     private boolean resetRequestAccepted;
+    private String loginChallengeToken;
 
     @Given("a logged-in customer wanting to change their password")
     public void loggedInPasswordCustomer() {
@@ -227,6 +229,57 @@ public class PasswordSteps {
     public void passwordResetRejected() {
         assertThat(lastError.status()).isEqualTo(BAD_REQUEST);
         assertThat(readCode(lastError.contentUTF8())).isEqualTo(UserPasswordResetInvalidException.CODE);
+    }
+
+    @When("I start a fresh login and keep its two-factor code")
+    public void startFreshLoginAndKeepItsCode() {
+        mailpit.deleteMessages(user.email());
+        authClient.login(user.email(), user.password(), DEVICE_FINGERPRINT).close();
+        otp = mailpit.waitForOtp(user.email());
+        assertThat(otp).isNotBlank();
+    }
+
+    @When("I reset my password with that two-factor code")
+    public void resetPasswordWithTwoFactorCode() {
+        try {
+            unauthenticatedApi().resetPassword(DEVICE_FINGERPRINT, new ResetPasswordCommandRequest()
+                    .email(user.email())
+                    .otp(otp)
+                    .newPassword(NEW_PASSWORD));
+            throw new AssertionError("A login two-factor code was accepted as a password reset code");
+        } catch (FeignException e) {
+            lastError = e;
+        }
+    }
+
+    @Then("I can still log in with my original password")
+    public void loginWithOriginalPassword() {
+        Session session = login(user.email(), user.password());
+        assertThat(session.accessToken()).isNotBlank();
+    }
+
+    /** Takes the challenge token without reading Mailpit, so a code already in hand is kept. */
+    @When("I start a fresh login challenge")
+    public void startFreshLoginChallenge() {
+        JsonNode loginBody = readBody(authClient.login(user.email(), user.password(), DEVICE_FINGERPRINT));
+        loginChallengeToken = loginBody.path("challengeToken").asString();
+        assertThat(loginChallengeToken).isNotBlank();
+    }
+
+    @When("I complete the login second factor with the password reset code")
+    public void completeTwoFactorWithPasswordResetCode() {
+        try {
+            authClient.verifyTwoFactor(loginChallengeToken, otp, DEVICE_FINGERPRINT).close();
+            throw new AssertionError("A password reset code was accepted as a login second factor");
+        } catch (FeignException e) {
+            lastError = e;
+        }
+    }
+
+    @Then("the login second factor is rejected")
+    public void loginSecondFactorRejected() {
+        assertThat(lastError.status()).isEqualTo(UNAUTHORIZED);
+        assertThat(readCode(lastError.contentUTF8())).isEqualTo(TwoFactorInvalidException.CODE);
     }
 
     private static void awaitNextJwtSecond() {

@@ -34,6 +34,7 @@ import org.apache.fineract.consumer.infrastructure.audit.data.NonTransactionalAu
 import org.apache.fineract.consumer.infrastructure.exception.AbstractConsumerException;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.data.PendingOtp;
 import org.apache.fineract.consumer.infrastructure.otp.exception.OtpDestinationInvalidException;
 import org.apache.fineract.consumer.infrastructure.otp.exception.OtpTokenInvalidException;
@@ -56,11 +57,11 @@ public class OtpServiceImpl implements OtpService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
-    public PendingOtp createOtp(UUID publicId, OtpDestination destination) {
+    public PendingOtp createOtp(UUID publicId, OtpPurpose purpose, OtpDestination destination) {
         if (OtpConstants.EMAIL_DELIVERY_METHOD_NAME.equalsIgnoreCase(destination.getDeliveryMethod())) {
             PendingOtp request = generateNewToken(destination);
-            otpEmailDeliveryService.deliver(destination.getTarget(), request.getToken());
-            otpRepository.savePendingOtp(publicId, hashToken(request.getToken()));
+            otpEmailDeliveryService.deliver(destination.getTarget(), request.getToken(), purpose);
+            otpRepository.savePendingOtp(publicId, purpose, hashToken(purpose, request.getToken()));
             publishOtpEvent(AuditEventType.OTP_CHALLENGE_ISSUED, publicId);
             return request;
         }
@@ -68,19 +69,20 @@ public class OtpServiceImpl implements OtpService {
     }
 
     @Override
-    public void validateOtp(UUID publicId, String token) {
-        validateOtp(publicId, token, OtpTokenInvalidException::new);
+    public void validateOtp(UUID publicId, OtpPurpose purpose, String token) {
+        validateOtp(publicId, purpose, token, OtpTokenInvalidException::new);
     }
 
     @Override
-    public void validateOtp(UUID publicId, String token, Supplier<? extends AbstractConsumerException> onInvalid) {
-        String storedHash = otpRepository.getPendingTokenHash(publicId);
-        if (token == null || storedHash == null || !storedHash.equals(hashToken(token))) {
+    public void validateOtp(UUID publicId, OtpPurpose purpose, String token,
+            Supplier<? extends AbstractConsumerException> onInvalid) {
+        String storedHash = otpRepository.getPendingTokenHash(publicId, purpose);
+        if (token == null || storedHash == null || !storedHash.equals(hashToken(purpose, token))) {
             boolean attemptsExceeded = false;
             if (storedHash != null) {
-                long failedAttempts = otpRepository.recordFailedValidationAttempt(publicId);
+                long failedAttempts = otpRepository.recordFailedValidationAttempt(publicId, purpose);
                 if (failedAttempts >= OtpConstants.MAX_OTP_VALIDATION_ATTEMPTS) {
-                    otpRepository.deletePendingOtp(publicId);
+                    otpRepository.deletePendingOtp(publicId, purpose);
                     attemptsExceeded = true;
                 }
             }
@@ -91,7 +93,7 @@ public class OtpServiceImpl implements OtpService {
             }
             throw onInvalid.get();
         }
-        otpRepository.deletePendingOtp(publicId);
+        otpRepository.deletePendingOtp(publicId, purpose);
     }
 
     private void publishOtpEvent(AuditEventType eventType, UUID publicId) {
@@ -112,10 +114,15 @@ public class OtpServiceImpl implements OtpService {
         return builder.toString();
     }
 
-    private static String hashToken(String token) {
+    /**
+     * Hashes the code with its purpose mixed in, so the stored hash is only ever valid for the flow
+     * that minted it — a hash lifted out of one slot does not match in another.
+     */
+    private static String hashToken(OtpPurpose purpose, String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
-            byte[] hashed = digest.digest(token.toUpperCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8));
+            String material = purpose.getKeySegment() + ':' + token.toUpperCase(Locale.ROOT);
+            byte[] hashed = digest.digest(material.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hashed);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(HASH_ALGORITHM + " unavailable", e);

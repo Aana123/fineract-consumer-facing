@@ -136,4 +136,4 @@ No document type, document key, or masked fragment is persisted.
 == Limitations and future work
 
 * *Verification is a matching check, not document verification.* There is no external KYC provider integration, no liveness or document capture, and no type specific validation (an SSN with an impossible format passes if the back office stored it that way).
-* *Submit-endpoint throttling is an edge concern.* The per user `RateLimitFilter` does not apply to the public submit endpoint; production providers supply per IP throttling and DDoS protection at their edge, which is not part of the dev stack.
+* *Submit-endpoint throttling is an edge concern.* The per user `RateLimitFilter` does not apply to the public submit endpoint; production providers supply per IP throttling and DDoS protection at their edge, which is not part of the dev stack. `IdentityVerificationAttemptCounter` caps failures per Fineract client (5 per 15 minutes) inside the BFF, which bounds guessing of one client's document key but does not bound a sweep that tries one known key against many client ids — that still needs the edge.
