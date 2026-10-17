@@ -468,6 +468,7 @@
   "error.msg.consumer.otp.delivery.method.invalid": "That delivery destination is invalid. Please check it and try again.",
   "error.msg.consumer.otp.invalid": "That verification code is invalid or has expired.",
   "error.msg.consumer.registration.identity.not.verified": "We couldn't verify your identity with the details provided.",
+  "error.msg.consumer.registration.not.pending": "This registration is already complete. Please sign in instead.",
   "error.msg.consumer.identity.verification.unavailable": "Identity verification is temporarily unavailable. Please try again later.",
   "error.msg.consumer.savings.query.access.denied": "You don't have access to this savings account.",
   "error.msg.consumer.savings.account.not.found": "We couldn't find that savings account.",

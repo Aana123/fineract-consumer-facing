@@ -60,6 +60,7 @@ import org.apache.fineract.consumer.infrastructure.kyc.service.ClientStandingChe
 import org.apache.fineract.consumer.infrastructure.web.service.EmailMaskingService;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -111,7 +112,7 @@ public class AuthenticationCommandServiceImpl implements AuthenticationCommandSe
                 .deliveryMethod(OtpConstants.EMAIL_DELIVERY_METHOD_NAME)
                 .target(command.getEmail())
                 .build();
-        otpService.createOtp(user.getPublicId(), destination);
+        otpService.createOtp(user.getPublicId(), OtpPurpose.LOGIN_TWO_FACTOR, destination);
 
         IssuedJwt challenge = jwtIssuer.issue(
                 user.getPublicId().toString(),
@@ -140,7 +141,7 @@ public class AuthenticationCommandServiceImpl implements AuthenticationCommandSe
         }
 
         UUID publicId = UUID.fromString(challenge.getSubject());
-        otpService.validateOtp(publicId, command.getToken(), TwoFactorInvalidException::new);
+        otpService.validateOtp(publicId, OtpPurpose.LOGIN_TWO_FACTOR, command.getToken(), TwoFactorInvalidException::new);
 
         PrincipalUserAuthCommandData user = principalUserAuthLookup.findByPublicId(publicId);
         EstablishedSessionCommandData session = establishSession(user.getId(), publicId, user.isBound(),

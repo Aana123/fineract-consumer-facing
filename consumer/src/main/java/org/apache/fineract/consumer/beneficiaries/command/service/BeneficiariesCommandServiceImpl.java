@@ -55,6 +55,7 @@ import org.apache.fineract.consumer.infrastructure.stepup.service.StepUpTokenSer
 import org.apache.fineract.consumer.infrastructure.web.service.EmailMaskingService;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
 import org.apache.fineract.consumer.user.query.data.UserQueryData;
 import org.apache.fineract.consumer.user.query.service.UserQueryService;
@@ -245,14 +246,14 @@ public class BeneficiariesCommandServiceImpl implements BeneficiariesCommandServ
     }
 
     private void sendOtp(UUID publicId, UserQueryData user) {
-        otpService.createOtp(publicId, OtpDestination.builder()
+        otpService.createOtp(publicId, OtpPurpose.BENEFICIARY, OtpDestination.builder()
                 .deliveryMethod(OtpConstants.EMAIL_DELIVERY_METHOD_NAME)
                 .target(user.getEmail())
                 .build());
     }
 
     private void validateOtp(UUID publicId, String otp) {
-        otpService.validateOtp(publicId, otp, BeneficiaryStepUpInvalidException::new);
+        otpService.validateOtp(publicId, OtpPurpose.BENEFICIARY, otp, BeneficiaryStepUpInvalidException::new);
     }
 
     private String addActionFingerprint(String name, String officeName, String accountNumber,

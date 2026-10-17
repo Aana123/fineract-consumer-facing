@@ -23,13 +23,22 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.apache.fineract.consumer.infrastructure.exception.AbstractConsumerException;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.data.PendingOtp;
 
+/**
+ * Mints and redeems one-time codes.
+ *
+ * <p>Every method takes the {@link OtpPurpose} the code is for. A code minted for one purpose does
+ * not validate for another, so the holder of a code obtained from a low-stakes challenge cannot
+ * spend it on a high-stakes one.
+ */
 public interface OtpService {
 
-    PendingOtp createOtp(UUID publicId, OtpDestination destination);
+    PendingOtp createOtp(UUID publicId, OtpPurpose purpose, OtpDestination destination);
 
-    void validateOtp(UUID publicId, String token);
+    void validateOtp(UUID publicId, OtpPurpose purpose, String token);
 
-    void validateOtp(UUID publicId, String token, Supplier<? extends AbstractConsumerException> onInvalid);
+    void validateOtp(UUID publicId, OtpPurpose purpose, String token,
+            Supplier<? extends AbstractConsumerException> onInvalid);
 }

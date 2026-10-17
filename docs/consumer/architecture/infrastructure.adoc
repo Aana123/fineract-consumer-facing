@@ -80,6 +80,8 @@ The live client-standing check. `service/ClientStandingChecker.isActive(fineract
 
 It runs at every token mint so verification status is never carried forward from an older token: `AuthenticationCommandServiceImpl` calls it when establishing a session (login, 2FA, refresh), and `OAuth2AccessTokenCustomizer` calls it when minting open banking access tokens.
 
+`service/IdentityVerificationAttemptCounter` is the other half of the KYC surface: a Valkey counter at `identity:attempts:{fineractClientId}` that caps failed identity-verification attempts at `MAX_FAILED_ATTEMPTS` (5) inside a 15-minute `WINDOW`. Registration's submit endpoint is public and the per-user `RateLimitFilter` keys on an authenticated subject, so without this counter a wrong guess at someone's government ID costs one request and nothing else. The window starts at the first failure and is not extended by later ones, so a locked-out client is always released on time rather than held out by an attacker who keeps knocking, and a Valkey failure allows the attempt — the flow cannot complete without Valkey anyway, since the OTP that follows lives there.
+
 == oauth2
 
 Open banking OAuth2 plumbing that plugs into Spring Authorization Server (wired by `OAuth2AuthorizationServerConfig`). PKCE (Proof Key for Code Exchange) is enforced for the authorization-code flow.
@@ -96,7 +98,7 @@ The two ports are implemented by the `openbanking` feature module, which owns co
 The OTP (one-time password) capability consumed by login 2FA, registration email verification, password change and reset, and the step-up ceremonies. The One-Time Passwords section of the Features chapter covers it in depth. In summary:
 
 * `service/OtpService` (implemented by `OtpServiceImpl`) generates a six-character code, hands the raw code to `service/OtpEmailDeliveryService` for SMTP delivery, and stores only an unsalted SHA-256 hash. `validateOtp` compares hashes, deletes the code on success (single use), and throws a caller-supplied exception on failure so each flow surfaces its own error.
-* `repository/OtpRepository` keeps all state in Valkey: `otp:pending:{publicId}` holds the hash and `otp:attempts:{publicId}` counts failed validations, both with a 300 second TTL. Five failures burn the pending code.
+* `repository/OtpRepository` keeps all state in Valkey: `otp:pending:{purpose}:{publicId}` holds the hash and `otp:attempts:{purpose}:{publicId}` counts failed validations, both with a 300 second TTL. Five failures burn the pending code. The `{purpose}` segment (`OtpPurpose`) is what keeps a code minted for one ceremony from satisfying another.
 * `data/` holds `OtpConstants` (TTL, attempt cap, delivery-method names), `OtpDestination`, `OtpMetadata`, and `PendingOtp`; `exception/` holds the invalid-token, invalid-destination, and delivery-failed exceptions.
 
 `authentication`, `registration`, `user`, `transfers`, and `beneficiaries` consume the service. Email is the only implemented delivery channel, and there are no OTP database tables.

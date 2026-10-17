@@ -31,6 +31,16 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 public interface UserCommandService {
 
+    /**
+     * Refuses a registration for an email or Fineract client that is already taken, without
+     * creating anything.
+     *
+     * <p>Registration needs this answer <em>before</em> it checks the applicant's government ID, so
+     * that a client which is already registered is refused the same way whether or not the ID
+     * supplied was right. {@link #create} repeats the check, because only the insert is atomic.
+     */
+    void requireRegistrable(Long fineractClientId, String email);
+
     UserCreatedCommandData create(CreateUserCommand command);
 
     void markOtpVerified(Long userId);

@@ -35,9 +35,11 @@ import org.apache.fineract.consumer.client.model.VerifyOtpCommandData;
 import org.apache.fineract.consumer.client.model.VerifyOtpCommandRequest;
 import org.apache.fineract.consumer.cucumber.clients.MailpitClient;
 import org.apache.fineract.consumer.cucumber.helpers.FineractSeeder;
+import org.apache.fineract.consumer.infrastructure.kyc.service.IdentityVerificationAttemptCounter;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.exception.OtpTokenInvalidException;
 import org.apache.fineract.consumer.registration.command.exception.IdentityNotVerifiedException;
+import org.apache.fineract.consumer.registration.command.exception.RegistrationNotPendingException;
 import org.apache.fineract.consumer.user.command.exception.UserAlreadyExistsException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -87,6 +89,27 @@ public class RegistrationSteps {
     public void submitAgainWithDifferentEmail() {
         String differentEmail = "user-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
         submit(seededClient, differentEmail, seededClient.documentKey());
+    }
+
+    @When("I submit registration again with a different email and a non-matching Passport")
+    public void submitAgainWithDifferentEmailAndWrongPassport() {
+        String differentEmail = "user-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        submit(seededClient, differentEmail, "WRONG-VALUE-" + UUID.randomUUID().toString().substring(0, 4));
+    }
+
+    @When("I submit registration with a non-matching Passport value until the client is locked out")
+    public void submitMismatchUntilLockedOut() {
+        for (int attempt = 0; attempt < IdentityVerificationAttemptCounter.MAX_FAILED_ATTEMPTS; attempt++) {
+            submitMismatch();
+            registrationRejected();
+        }
+    }
+
+    @Then("the code request is refused because registration is already complete")
+    public void codeRequestRefusedAsComplete() {
+        assertThat(lastError).as("expected the code request to be refused, got success").isNotNull();
+        assertThat(lastError.status()).isEqualTo(409);
+        assertThat(readCode(lastError.contentUTF8())).isEqualTo(RegistrationNotPendingException.CODE);
     }
 
     @Then("registration is accepted in PENDING_OTP state")

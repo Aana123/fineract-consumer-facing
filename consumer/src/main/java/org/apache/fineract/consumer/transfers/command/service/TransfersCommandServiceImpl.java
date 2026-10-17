@@ -42,6 +42,7 @@ import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEv
 import org.apache.fineract.consumer.infrastructure.fineractclient.data.LoanPayoffData;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
 import org.apache.fineract.consumer.transfers.command.data.ConfirmTransferCommand;
 import org.apache.fineract.consumer.transfers.command.data.InitiateTransferCommand;
@@ -85,7 +86,7 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
                 TransferAccessDeniedException::new);
         requireDestinationAllowed(jwt, user.getId(), command.getToAccountId(), toLoan, command.getAmount());
 
-        otpService.createOtp(publicId, OtpDestination.builder()
+        otpService.createOtp(publicId, OtpPurpose.TRANSFER, OtpDestination.builder()
                 .deliveryMethod(OtpConstants.EMAIL_DELIVERY_METHOD_NAME)
                 .target(user.getEmail())
                 .build());
@@ -123,7 +124,7 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
         }
 
         UserQueryData user = userQueryService.findByPublicId(publicId);
-        otpService.validateOtp(publicId, command.getOtp(), TransferStepUpInvalidException::new);
+        otpService.validateOtp(publicId, OtpPurpose.TRANSFER, command.getOtp(), TransferStepUpInvalidException::new);
 
         accessPolicyEvaluator.authorize(jwt, ConsumerAction.TRANSFER_EXECUTE, command.getFromAccountId(),
                 TransferAccessDeniedException::new);

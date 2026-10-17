@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,8 +41,9 @@ import org.springframework.data.redis.core.ValueOperations;
 class OtpRepositoryTest {
 
     private static final UUID PUBLIC_ID = UUID.fromString("3f2c8a1e-0000-4000-8000-000000000001");
-    private static final String EXPECTED_KEY = "otp:pending:" + PUBLIC_ID;
-    private static final String EXPECTED_ATTEMPTS_KEY = "otp:attempts:" + PUBLIC_ID;
+    private static final OtpPurpose PURPOSE = OtpPurpose.TRANSFER;
+    private static final String EXPECTED_KEY = "otp:pending:" + PURPOSE.getKeySegment() + ":" + PUBLIC_ID;
+    private static final String EXPECTED_ATTEMPTS_KEY = "otp:attempts:" + PURPOSE.getKeySegment() + ":" + PUBLIC_ID;
     private static final String TOKEN_HASH = "a1b2c3d4e5f6";
 
     @Mock
@@ -61,7 +63,7 @@ class OtpRepositoryTest {
     void saveWritesNamespacedKeyWithOtpTtl() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        repository.savePendingOtp(PUBLIC_ID, TOKEN_HASH);
+        repository.savePendingOtp(PUBLIC_ID, PURPOSE, TOKEN_HASH);
 
         verify(valueOperations).set(EXPECTED_KEY, TOKEN_HASH, Duration.ofSeconds(OtpConstants.OTP_TTL_SECONDS));
     }
@@ -70,7 +72,7 @@ class OtpRepositoryTest {
     void saveResetsFailedAttemptCounter() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        repository.savePendingOtp(PUBLIC_ID, TOKEN_HASH);
+        repository.savePendingOtp(PUBLIC_ID, PURPOSE, TOKEN_HASH);
 
         verify(redisTemplate).delete(EXPECTED_ATTEMPTS_KEY);
     }
@@ -80,7 +82,7 @@ class OtpRepositoryTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.increment(EXPECTED_ATTEMPTS_KEY)).thenReturn(2L);
 
-        assertThat(repository.recordFailedValidationAttempt(PUBLIC_ID)).isEqualTo(2L);
+        assertThat(repository.recordFailedValidationAttempt(PUBLIC_ID, PURPOSE)).isEqualTo(2L);
         verify(redisTemplate, never()).expire(EXPECTED_ATTEMPTS_KEY, Duration.ofSeconds(OtpConstants.OTP_TTL_SECONDS));
     }
 
@@ -89,7 +91,7 @@ class OtpRepositoryTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.increment(EXPECTED_ATTEMPTS_KEY)).thenReturn(1L);
 
-        assertThat(repository.recordFailedValidationAttempt(PUBLIC_ID)).isEqualTo(1L);
+        assertThat(repository.recordFailedValidationAttempt(PUBLIC_ID, PURPOSE)).isEqualTo(1L);
         verify(redisTemplate).expire(EXPECTED_ATTEMPTS_KEY, Duration.ofSeconds(OtpConstants.OTP_TTL_SECONDS));
     }
 
@@ -98,7 +100,7 @@ class OtpRepositoryTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get(EXPECTED_KEY)).thenReturn(TOKEN_HASH);
 
-        assertThat(repository.getPendingTokenHash(PUBLIC_ID)).isEqualTo(TOKEN_HASH);
+        assertThat(repository.getPendingTokenHash(PUBLIC_ID, PURPOSE)).isEqualTo(TOKEN_HASH);
     }
 
     @Test
@@ -106,12 +108,36 @@ class OtpRepositoryTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get(EXPECTED_KEY)).thenReturn(null);
 
-        assertThat(repository.getPendingTokenHash(PUBLIC_ID)).isNull();
+        assertThat(repository.getPendingTokenHash(PUBLIC_ID, PURPOSE)).isNull();
+    }
+
+    @Test
+    void eachPurposeGetsItsOwnSlot() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        repository.savePendingOtp(PUBLIC_ID, OtpPurpose.PASSWORD_RESET, TOKEN_HASH);
+
+        // The same user, a different ceremony: a code minted for one must not be readable as the
+        // code for the other, which is what a shared key would make it.
+        String resetKey = "otp:pending:" + OtpPurpose.PASSWORD_RESET.getKeySegment() + ":" + PUBLIC_ID;
+        assertThat(resetKey).isNotEqualTo(EXPECTED_KEY);
+        verify(valueOperations).set(resetKey, TOKEN_HASH, Duration.ofSeconds(OtpConstants.OTP_TTL_SECONDS));
+        verify(valueOperations, never()).set(EXPECTED_KEY, TOKEN_HASH,
+                Duration.ofSeconds(OtpConstants.OTP_TTL_SECONDS));
+    }
+
+    @Test
+    void purposeKeySegmentsAreUniqueAndKeySafe() {
+        // A duplicated or ':'-bearing segment would merge or straddle two ceremonies' slots.
+        assertThat(java.util.Arrays.stream(OtpPurpose.values()).map(OtpPurpose::getKeySegment).distinct().count())
+                .isEqualTo(OtpPurpose.values().length);
+        assertThat(OtpPurpose.values()).allSatisfy(purpose ->
+                assertThat(purpose.getKeySegment()).isNotBlank().doesNotContain(":"));
     }
 
     @Test
     void deleteRemovesPendingOtpAndAttemptCounter() {
-        repository.deletePendingOtp(PUBLIC_ID);
+        repository.deletePendingOtp(PUBLIC_ID, PURPOSE);
 
         verify(redisTemplate).delete(List.of(EXPECTED_KEY, EXPECTED_ATTEMPTS_KEY));
     }

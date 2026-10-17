@@ -56,3 +56,21 @@ Feature: Logged-in password change
     And I retrieve the password reset OTP from Mailpit
     And I reset my password with a wrong OTP
     Then the password reset is rejected as invalid
+
+  # One-time codes are bound to the ceremony that minted them. Before that binding existed these
+  # two scenarios both passed the *attacker's* way round: a single slot per user meant whichever
+  # code was minted last satisfied whichever challenge was presented, and the password reset — which
+  # is public and asks for nothing but an email, a code and a new password — was the most valuable
+  # thing any code could be spent on.
+  Scenario: A login two-factor code cannot be spent on a password reset
+    When I start a fresh login and keep its two-factor code
+    And I reset my password with that two-factor code
+    Then the password reset is rejected as invalid
+    And I can still log in with my original password
+
+  Scenario: A password reset code cannot complete the login second factor
+    When I start a fresh login challenge
+    And I request a password reset for my email
+    And I retrieve the password reset OTP from Mailpit
+    And I complete the login second factor with the password reset code
+    Then the login second factor is rejected

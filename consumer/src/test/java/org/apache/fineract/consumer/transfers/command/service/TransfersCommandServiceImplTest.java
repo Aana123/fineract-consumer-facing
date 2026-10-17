@@ -55,6 +55,7 @@ import org.apache.fineract.consumer.infrastructure.jwt.data.IssuedJwt;
 import org.apache.fineract.consumer.infrastructure.stepup.service.StepUpTokenService;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
 import org.apache.fineract.consumer.transfers.command.data.ConfirmTransferCommand;
 import org.apache.fineract.consumer.transfers.command.data.InitiateTransferCommand;
@@ -287,7 +288,7 @@ class TransfersCommandServiceImplTest {
         verify(accessPolicyEvaluator).authorize(any(), eq(ConsumerAction.TRANSFER_EXECUTE), eq(FROM_SAVINGS_ID), any());
 
         ArgumentCaptor<OtpDestination> destination = ArgumentCaptor.forClass(OtpDestination.class);
-        verify(otpService).createOtp(eq(PUBLIC_ID), destination.capture());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.TRANSFER), destination.capture());
         assertThat(destination.getValue().getDeliveryMethod()).isEqualTo(OtpConstants.EMAIL_DELIVERY_METHOD_NAME);
         assertThat(destination.getValue().getTarget()).isEqualTo(EMAIL);
     }
@@ -301,7 +302,7 @@ class TransfersCommandServiceImplTest {
 
         service.initiate(jwt(), initiateSavingsCommand());
 
-        verify(otpService).createOtp(eq(PUBLIC_ID), any());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.TRANSFER), any());
     }
 
     @Test
@@ -319,7 +320,7 @@ class TransfersCommandServiceImplTest {
         service.initiate(jwt(), initiateLoanCommand());
 
         verify(beneficiariesQueryService, never()).findActiveByAccount(any(), any());
-        verify(otpService).createOtp(eq(PUBLIC_ID), any());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.TRANSFER), any());
     }
 
     @Test
@@ -336,7 +337,7 @@ class TransfersCommandServiceImplTest {
 
         service.initiate(jwt(), initiateLoanCommand(AMOUNT));
 
-        verify(otpService).createOtp(eq(PUBLIC_ID), any());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.TRANSFER), any());
     }
 
     @Test
@@ -349,7 +350,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferLoanOverpaymentException.class)
                 .hasFieldOrPropertyWithValue("code", TransferLoanOverpaymentException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
         verify(stepUpTokenService, never()).issue(any(), any(), any(), any());
     }
 
@@ -363,7 +364,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferLoanNotActiveException.class)
                 .hasFieldOrPropertyWithValue("code", TransferLoanNotActiveException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
         verify(stepUpTokenService, never()).issue(any(), any(), any(), any());
     }
 
@@ -377,7 +378,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferLoanNotActiveException.class)
                 .hasFieldOrPropertyWithValue("code", TransferLoanNotActiveException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
         verify(stepUpTokenService, never()).issue(any(), any(), any(), any());
     }
 
@@ -392,7 +393,7 @@ class TransfersCommandServiceImplTest {
 
         verify(transferFineractClient, never()).getLoanPayoff(any());
         verify(beneficiariesQueryService, never()).findActiveByAccount(any(), any());
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -404,7 +405,7 @@ class TransfersCommandServiceImplTest {
 
         service.initiate(jwt(), initiateSavingsCommand());
 
-        verify(otpService).createOtp(eq(PUBLIC_ID), any());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.TRANSFER), any());
     }
 
     @Test
@@ -417,7 +418,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferBeneficiaryLimitExceededException.class)
                 .hasFieldOrPropertyWithValue("code", TransferBeneficiaryLimitExceededException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -432,7 +433,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferBeneficiaryLimitExceededException.class)
                 .hasFieldOrPropertyWithValue("code", TransferBeneficiaryLimitExceededException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -446,7 +447,7 @@ class TransfersCommandServiceImplTest {
 
         service.initiate(jwt(), initiateSavingsCommand(BENEFICIARY_LIMIT));
 
-        verify(otpService).createOtp(eq(PUBLIC_ID), any());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.TRANSFER), any());
     }
 
     @Test
@@ -460,7 +461,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferAccessDeniedException.class)
                 .hasFieldOrPropertyWithValue("code", TransferAccessDeniedException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -474,7 +475,7 @@ class TransfersCommandServiceImplTest {
                 .hasFieldOrPropertyWithValue("code", TransferAccessDeniedException.CODE);
 
         verify(beneficiariesQueryService, never()).findActiveByAccount(any(), any());
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -491,7 +492,7 @@ class TransfersCommandServiceImplTest {
                 .isInstanceOf(TransferInvalidException.class)
                 .hasFieldOrPropertyWithValue("code", TransferInvalidException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -688,7 +689,8 @@ class TransfersCommandServiceImplTest {
                 .thenReturn(ACTION_FINGERPRINT);
         when(stepUpTokenService.verify(STEP_UP_TOKEN, PUBLIC_ID, DEVICE_FINGERPRINT, ACTION_FINGERPRINT)).thenReturn(true);
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
-        doAnswer(throwsCallerSuppliedException(2)).when(otpService).validateOtp(eq(PUBLIC_ID), eq(OTP), any());
+        doAnswer(throwsCallerSuppliedException(3))
+                .when(otpService).validateOtp(eq(PUBLIC_ID), eq(OtpPurpose.TRANSFER), eq(OTP), any());
 
         assertThatThrownBy(() -> service.confirm(jwt(), confirmSavingsCommand()))
                 .isInstanceOf(TransferStepUpInvalidException.class)

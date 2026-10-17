@@ -43,6 +43,7 @@ import org.apache.fineract.consumer.infrastructure.stepup.data.StepUpConstants;
 import org.apache.fineract.consumer.infrastructure.stepup.service.StepUpTokenService;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
 import org.apache.fineract.consumer.user.command.data.ConfirmPasswordChangeCommand;
 import org.apache.fineract.consumer.user.command.data.CreateUserCommand;
@@ -262,7 +263,7 @@ class UserCommandServiceImplTest {
             assertThat(challenge.getSentTo()).isEqualTo(MASKED_EMAIL);
 
             ArgumentCaptor<OtpDestination> destination = ArgumentCaptor.forClass(OtpDestination.class);
-            verify(otpService).createOtp(eq(PUBLIC_ID), destination.capture());
+            verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.PASSWORD_CHANGE), destination.capture());
             assertThat(destination.getValue().getDeliveryMethod())
                     .isEqualTo(OtpConstants.EMAIL_DELIVERY_METHOD_NAME);
             assertThat(destination.getValue().getTarget()).isEqualTo(EMAIL);
@@ -277,7 +278,7 @@ class UserCommandServiceImplTest {
                     .isInstanceOf(UserPasswordInvalidException.class)
                     .hasFieldOrPropertyWithValue("code", UserPasswordInvalidException.CODE);
 
-            verify(otpService, never()).createOtp(any(), any());
+            verify(otpService, never()).createOtp(any(), any(), any());
         }
 
         @Test
@@ -288,7 +289,7 @@ class UserCommandServiceImplTest {
             assertThatThrownBy(() -> service.initiatePasswordChange(jwt(), initiateCommand()))
                     .isInstanceOf(AccessScopeInsufficientException.class);
 
-            verify(otpService, never()).createOtp(any(), any());
+            verify(otpService, never()).createOtp(any(), any(), any());
         }
     }
 
@@ -315,7 +316,7 @@ class UserCommandServiceImplTest {
 
             EstablishedSessionCommandData session = service.confirmPasswordChange(jwt(), confirmCommand());
 
-            verify(otpService).validateOtp(eq(PUBLIC_ID), eq(OTP), any());
+            verify(otpService).validateOtp(eq(PUBLIC_ID), eq(OtpPurpose.PASSWORD_CHANGE), eq(OTP), any());
             verify(repository).save(user);
             assertThat(user.getPasswordHash()).isEqualTo(NEW_PASSWORD_HASH);
             verify(authenticationCommandService).revokeAllSessionsAndReissue(USER_ID, PUBLIC_ID, DEVICE_FINGERPRINT);
@@ -340,7 +341,8 @@ class UserCommandServiceImplTest {
             stubActionFingerprint();
             when(stepUpTokenService.verify(STEP_UP_TOKEN, PUBLIC_ID, DEVICE_FINGERPRINT, ACTION_FINGERPRINT))
                     .thenReturn(true);
-            doAnswer(throwsCallerSuppliedException(2)).when(otpService).validateOtp(eq(PUBLIC_ID), eq(OTP), any());
+            doAnswer(throwsCallerSuppliedException(3))
+                    .when(otpService).validateOtp(eq(PUBLIC_ID), eq(OtpPurpose.PASSWORD_CHANGE), eq(OTP), any());
 
             assertThatThrownBy(() -> service.confirmPasswordChange(jwt(), confirmCommand()))
                     .isInstanceOf(UserStepUpInvalidException.class);
@@ -376,7 +378,7 @@ class UserCommandServiceImplTest {
             service.forgotPassword(ForgotPasswordCommand.builder().email(EMAIL).build());
 
             ArgumentCaptor<OtpDestination> destination = ArgumentCaptor.forClass(OtpDestination.class);
-            verify(otpService).createOtp(eq(PUBLIC_ID), destination.capture());
+            verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.PASSWORD_RESET), destination.capture());
             assertThat(destination.getValue().getDeliveryMethod())
                     .isEqualTo(OtpConstants.EMAIL_DELIVERY_METHOD_NAME);
             assertThat(destination.getValue().getTarget()).isEqualTo(EMAIL);
@@ -389,7 +391,7 @@ class UserCommandServiceImplTest {
             service.forgotPassword(ForgotPasswordCommand.builder().email(EMAIL).build());
 
             verify(taskExecutor, never()).execute(any());
-            verify(otpService, never()).createOtp(any(), any());
+            verify(otpService, never()).createOtp(any(), any(), any());
         }
     }
 
@@ -413,7 +415,7 @@ class UserCommandServiceImplTest {
 
             service.resetPassword(resetCommand());
 
-            verify(otpService).validateOtp(eq(PUBLIC_ID), eq(OTP), any());
+            verify(otpService).validateOtp(eq(PUBLIC_ID), eq(OtpPurpose.PASSWORD_RESET), eq(OTP), any());
             verify(repository).save(user);
             assertThat(user.getPasswordHash()).isEqualTo(NEW_PASSWORD_HASH);
             verify(authenticationCommandService).revokeAllSessions(USER_ID, PUBLIC_ID);
@@ -427,7 +429,7 @@ class UserCommandServiceImplTest {
                     .isInstanceOf(UserPasswordResetInvalidException.class)
                     .hasFieldOrPropertyWithValue("code", UserPasswordResetInvalidException.CODE);
 
-            verify(otpService, never()).validateOtp(any(), any(), any());
+            verify(otpService, never()).validateOtp(any(), any(), any(), any());
             verify(repository, never()).save(any());
             verify(authenticationCommandService, never()).revokeAllSessions(any(), any());
         }
@@ -436,7 +438,8 @@ class UserCommandServiceImplTest {
         void invalidOtpIsRejectedWithTheGenericErrorAndPasswordUnchanged() {
             User user = existingUser();
             when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-            doAnswer(throwsCallerSuppliedException(2)).when(otpService).validateOtp(eq(PUBLIC_ID), eq(OTP), any());
+            doAnswer(throwsCallerSuppliedException(3))
+                    .when(otpService).validateOtp(eq(PUBLIC_ID), eq(OtpPurpose.PASSWORD_RESET), eq(OTP), any());
 
             assertThatThrownBy(() -> service.resetPassword(resetCommand()))
                     .isInstanceOf(UserPasswordResetInvalidException.class)

@@ -37,6 +37,7 @@ import org.apache.fineract.consumer.infrastructure.web.service.EmailMaskingServi
 import org.apache.fineract.consumer.infrastructure.stepup.service.StepUpTokenService;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
 import org.apache.fineract.consumer.user.command.data.ConfirmPasswordChangeCommand;
 import org.apache.fineract.consumer.user.command.data.CreateUserCommand;
@@ -80,13 +81,18 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
+    public void requireRegistrable(Long fineractClientId, String email) {
+        repository.findByEmail(email).ifPresent(u -> {
+            throw new UserAlreadyExistsException();
+        });
+        repository.findByFineractClientId(fineractClientId).ifPresent(u -> {
+            throw new UserAlreadyExistsException();
+        });
+    }
+
+    @Override
     public UserCreatedCommandData create(CreateUserCommand command) {
-        repository.findByEmail(command.getEmail()).ifPresent(u -> {
-            throw new UserAlreadyExistsException();
-        });
-        repository.findByFineractClientId(command.getFineractClientId()).ifPresent(u -> {
-            throw new UserAlreadyExistsException();
-        });
+        requireRegistrable(command.getFineractClientId(), command.getEmail());
         User user = User.createPendingOtp(
                 UUID.randomUUID(),
                 command.getEmail(),
@@ -121,7 +127,7 @@ public class UserCommandServiceImpl implements UserCommandService {
             throw new UserPasswordInvalidException();
         }
 
-        sendOtp(user);
+        sendOtp(user, OtpPurpose.PASSWORD_CHANGE);
         IssuedJwt issued = stepUpTokenService.issue(user.getPublicId(), command.getDeviceFingerprint(),
                 passwordChangeActionFingerprint(user.getPublicId()), StepUpConstants.STEPUP_TTL);
         eventPublisher.publishEvent(NonTransactionalAuditEvent.of(AuditEventType.PASSWORD_CHANGE_INITIATED,
@@ -143,7 +149,7 @@ public class UserCommandServiceImpl implements UserCommandService {
                 passwordChangeActionFingerprint(publicId))) {
             throw new UserStepUpInvalidException();
         }
-        otpService.validateOtp(publicId, command.getOtp(), UserStepUpInvalidException::new);
+        otpService.validateOtp(publicId, OtpPurpose.PASSWORD_CHANGE, command.getOtp(), UserStepUpInvalidException::new);
 
         User user = repository.findByPublicId(publicId).orElseThrow(UserCommandNotFoundException::new);
         user.changePassword(passwordEncoder.encode(command.getNewPassword()));
@@ -160,7 +166,7 @@ public class UserCommandServiceImpl implements UserCommandService {
         String correlationId = CorrelationIdHolder.getCurrentCorrelationId();
         repository.findByEmail(command.getEmail()).ifPresent(user -> applicationTaskExecutor.execute(() -> {
             try {
-                sendOtp(user);
+                sendOtp(user, OtpPurpose.PASSWORD_RESET);
                 eventPublisher.publishEvent(NonTransactionalAuditEvent.of(AuditEventType.PASSWORD_CHANGE_INITIATED,
                         user.getId(), false, null, Map.of(DETAIL_FLOW, FLOW_RESET), correlationId));
             } catch (RuntimeException e) {
@@ -176,7 +182,7 @@ public class UserCommandServiceImpl implements UserCommandService {
             log.warn("password.reset.failed: unknown email");
             return new UserPasswordResetInvalidException();
         });
-        otpService.validateOtp(user.getPublicId(), command.getOtp(), () -> {
+        otpService.validateOtp(user.getPublicId(), OtpPurpose.PASSWORD_RESET, command.getOtp(), () -> {
             log.warn("password.reset.failed: invalid otp for user {}", user.getPublicId());
             return new UserPasswordResetInvalidException();
         });
@@ -188,8 +194,8 @@ public class UserCommandServiceImpl implements UserCommandService {
         log.info("password.reset.completed for user {}", user.getPublicId());
     }
 
-    private void sendOtp(User user) {
-        otpService.createOtp(user.getPublicId(), OtpDestination.builder()
+    private void sendOtp(User user, OtpPurpose purpose) {
+        otpService.createOtp(user.getPublicId(), purpose, OtpDestination.builder()
                 .deliveryMethod(OtpConstants.EMAIL_DELIVERY_METHOD_NAME)
                 .target(user.getEmail())
                 .build());

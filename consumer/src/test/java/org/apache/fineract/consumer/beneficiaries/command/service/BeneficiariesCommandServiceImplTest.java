@@ -69,6 +69,7 @@ import org.apache.fineract.consumer.infrastructure.jwt.data.IssuedJwt;
 import org.apache.fineract.consumer.infrastructure.stepup.service.StepUpTokenService;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpConstants;
 import org.apache.fineract.consumer.infrastructure.otp.data.OtpDestination;
+import org.apache.fineract.consumer.infrastructure.otp.data.OtpPurpose;
 import org.apache.fineract.consumer.infrastructure.otp.service.OtpService;
 import org.apache.fineract.consumer.user.query.data.UserStatus;
 import org.apache.fineract.consumer.user.query.data.UserQueryData;
@@ -278,7 +279,7 @@ class BeneficiariesCommandServiceImplTest {
         assertThat(result.getSentTo()).isEqualTo(MASKED_EMAIL);
 
         ArgumentCaptor<OtpDestination> destination = ArgumentCaptor.forClass(OtpDestination.class);
-        verify(otpService).createOtp(eq(PUBLIC_ID), destination.capture());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.BENEFICIARY), destination.capture());
         assertThat(destination.getValue().getDeliveryMethod()).isEqualTo(OtpConstants.EMAIL_DELIVERY_METHOD_NAME);
         assertThat(destination.getValue().getTarget()).isEqualTo(EMAIL);
     }
@@ -293,7 +294,7 @@ class BeneficiariesCommandServiceImplTest {
                 .isInstanceOf(BeneficiaryDuplicateNameException.class)
                 .hasFieldOrPropertyWithValue("code", BeneficiaryDuplicateNameException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -308,7 +309,7 @@ class BeneficiariesCommandServiceImplTest {
                 .isInstanceOf(BeneficiaryAccountInvalidException.class)
                 .hasFieldOrPropertyWithValue("code", BeneficiaryAccountInvalidException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -324,7 +325,7 @@ class BeneficiariesCommandServiceImplTest {
         assertThatThrownBy(() -> service.initiateAdd(jwt(), initiateAddCommand()))
                 .isInstanceOf(BeneficiaryAccountInvalidException.class);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -341,7 +342,7 @@ class BeneficiariesCommandServiceImplTest {
         assertThatThrownBy(() -> service.initiateAdd(jwt(), initiateAddCommand()))
                 .isInstanceOf(BeneficiaryAccountInvalidException.class);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -355,7 +356,7 @@ class BeneficiariesCommandServiceImplTest {
                 .isInstanceOf(BeneficiarySelfAccountException.class)
                 .hasFieldOrPropertyWithValue("code", BeneficiarySelfAccountException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -424,7 +425,8 @@ class BeneficiariesCommandServiceImplTest {
         stubAddFingerprint();
         when(stepUpTokenService.verify(STEP_UP_TOKEN, PUBLIC_ID, DEVICE_FINGERPRINT, ACTION_FINGERPRINT))
                 .thenReturn(true);
-        doAnswer(throwsCallerSuppliedException(2)).when(otpService).validateOtp(eq(PUBLIC_ID), eq(OTP), any());
+        doAnswer(throwsCallerSuppliedException(3))
+                .when(otpService).validateOtp(eq(PUBLIC_ID), eq(OtpPurpose.BENEFICIARY), eq(OTP), any());
 
         assertThatThrownBy(() -> service.confirmAdd(jwt(), confirmAddCommand()))
                 .isInstanceOf(BeneficiaryStepUpInvalidException.class)
@@ -495,7 +497,7 @@ class BeneficiariesCommandServiceImplTest {
         assertThat(result.getStepUpToken()).isEqualTo(STEP_UP_TOKEN);
         assertThat(result.getExpiresAt()).isEqualTo(expiresAt);
         assertThat(result.getSentTo()).isEqualTo(MASKED_EMAIL);
-        verify(otpService).createOtp(eq(PUBLIC_ID), any());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.BENEFICIARY), any());
     }
 
     @Test
@@ -508,7 +510,7 @@ class BeneficiariesCommandServiceImplTest {
                 .isInstanceOf(BeneficiaryNotFoundException.class)
                 .hasFieldOrPropertyWithValue("code", BeneficiaryNotFoundException.CODE);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -522,7 +524,7 @@ class BeneficiariesCommandServiceImplTest {
         assertThatThrownBy(() -> service.initiateUpdate(jwt(), initiateUpdateCommand(NAME)))
                 .isInstanceOf(BeneficiaryDuplicateNameException.class);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -539,7 +541,7 @@ class BeneficiariesCommandServiceImplTest {
 
         verify(beneficiaryCommandRepository, never())
                 .existsByUserIdAndNameIgnoreCaseAndActiveTrue(anyLong(), anyString());
-        verify(otpService).createOtp(eq(PUBLIC_ID), any());
+        verify(otpService).createOtp(eq(PUBLIC_ID), eq(OtpPurpose.BENEFICIARY), any());
     }
 
     @Test
@@ -597,7 +599,7 @@ class BeneficiariesCommandServiceImplTest {
         assertThatThrownBy(() -> service.initiateAdd(jwt(), initiateAddCommand()))
                 .isInstanceOf(AccessScopeInsufficientException.class);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
@@ -619,7 +621,7 @@ class BeneficiariesCommandServiceImplTest {
         assertThatThrownBy(() -> service.initiateUpdate(jwt(), initiateUpdateCommand(NAME)))
                 .isInstanceOf(AccessScopeInsufficientException.class);
 
-        verify(otpService, never()).createOtp(any(), any());
+        verify(otpService, never()).createOtp(any(), any(), any());
     }
 
     @Test
