@@ -13,25 +13,5 @@
     "local/no-i18n-library-import": {
       "count": 1
     }
-  },
-  "src/app/features/summary/summary.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/transfers/transfer-form.component.spec.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/transfers/transfer-form.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
-  },
-  "src/app/features/transfers/transfer.component.ts": {
-    "local/no-i18n-library-import": {
-      "count": 1
-    }
   }
 }
