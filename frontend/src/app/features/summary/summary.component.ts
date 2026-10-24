@@ -21,7 +21,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { IonCard, IonProgressBar } from '@ionic/angular/standalone';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe } from '../../core/adapters';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { SummaryStore } from './summary.store';
@@ -39,7 +39,7 @@ import { SummaryStore } from './summary.store';
     StatusBadgeComponent,
   ],
   template: `
-    <app-page-header [title]="'summary.title' | translate" />
+    <app-page-header [title]="'summary.title' | appTranslate" />
 
     @if (store.loading()) {
       <ion-progress-bar type="indeterminate" />
@@ -47,9 +47,9 @@ import { SummaryStore } from './summary.store';
 
     <ion-card>
       <header class="section-header">
-        <h2>{{ 'summary.section.savings' | translate }}</h2>
+        <h2>{{ 'summary.section.savings' | appTranslate }}</h2>
         <span class="count">
-          {{ 'summary.accountsCount' | translate: { count: store.savingsCount() } }}
+          {{ 'summary.accountsCount' | appTranslate: { count: store.savingsCount() } }}
         </span>
       </header>
 
@@ -69,21 +69,21 @@ import { SummaryStore } from './summary.store';
           </span>
         </a>
       } @empty {
-        <p class="empty">{{ 'summary.savings.empty' | translate }}</p>
+        <p class="empty">{{ 'summary.savings.empty' | appTranslate }}</p>
       }
 
       @if (store.savingsCount() > 0) {
         <a class="view-all" routerLink="/savings">
-          {{ 'summary.viewAll' | translate: { count: store.savingsCount() } }} &rarr;
+          {{ 'summary.viewAll' | appTranslate: { count: store.savingsCount() } }} &rarr;
         </a>
       }
     </ion-card>
 
     <ion-card>
       <header class="section-header">
-        <h2>{{ 'summary.section.loans' | translate }}</h2>
+        <h2>{{ 'summary.section.loans' | appTranslate }}</h2>
         <span class="count">
-          {{ 'summary.accountsCount' | translate: { count: store.loansCount() } }}
+          {{ 'summary.accountsCount' | appTranslate: { count: store.loansCount() } }}
         </span>
       </header>
 
@@ -103,12 +103,12 @@ import { SummaryStore } from './summary.store';
           </span>
         </a>
       } @empty {
-        <p class="empty">{{ 'summary.loan.empty' | translate }}</p>
+        <p class="empty">{{ 'summary.loan.empty' | appTranslate }}</p>
       }
 
       @if (store.loansCount() > 0) {
         <a class="view-all" routerLink="/loans">
-          {{ 'summary.viewAll' | translate: { count: store.loansCount() } }} &rarr;
+          {{ 'summary.viewAll' | appTranslate: { count: store.loansCount() } }} &rarr;
         </a>
       }
     </ion-card>

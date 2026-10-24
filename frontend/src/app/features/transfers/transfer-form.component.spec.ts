@@ -22,9 +22,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { provideIonicAngular } from '@ionic/angular/standalone';
-import { provideTranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { BeneficiaryQueryData, SavingsAccountListItemQueryData } from '../../core/adapters';
+import { provideI18nTesting } from '../../testing/i18n-testing';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { BeneficiariesStore } from '../beneficiaries/beneficiaries.store';
 import { SavingsStore } from '../savings/savings.store';
@@ -69,7 +69,7 @@ function createComponent(
     providers: [
       provideZonelessChangeDetection(),
       provideIonicAngular({ mode: 'md' }),
-      provideTranslateService(),
+      ...provideI18nTesting(),
       provideRouter([]),
       { provide: NotificationService, useValue: { showError } },
       { provide: SavingsStore, useValue: { accounts: signal(savingsAccounts), loadAccounts } },

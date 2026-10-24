@@ -31,7 +31,7 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { add } from 'ionicons/icons';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe } from '../../core/adapters';
 import { PageHeaderComponent } from '../../shared/ui/page-header.component';
 import { TransfersStore } from './transfers.store';
 
@@ -55,10 +55,10 @@ const HISTORY_PAGE_SIZE = 10;
     TranslatePipe,
   ],
   template: `
-    <app-page-header [title]="'transfers.history.title' | translate">
+    <app-page-header [title]="'transfers.history.title' | appTranslate">
       <ion-button [routerLink]="['/transfers', 'new']">
         <ion-icon slot="start" name="add" aria-hidden="true" />
-        {{ 'transfers.newCta' | translate }}
+        {{ 'transfers.newCta' | appTranslate }}
       </ion-button>
     </app-page-header>
 
@@ -71,20 +71,20 @@ const HISTORY_PAGE_SIZE = 10;
         <div class="table-scroll">
           <table cdk-table [dataSource]="store.history()">
             <ng-container cdkColumnDef="date">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.date' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.table.date' | appTranslate }}</th>
               <td cdk-cell *cdkCellDef="let row">{{ row.date | date: 'mediumDate' }}</td>
             </ng-container>
             <ng-container cdkColumnDef="fromAccount">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.filter.from' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.filter.from' | appTranslate }}</th>
               <td cdk-cell *cdkCellDef="let row">{{ row.fromAccount }}</td>
             </ng-container>
             <ng-container cdkColumnDef="toAccount">
-              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.filter.to' | translate }}</th>
+              <th cdk-header-cell *cdkHeaderCellDef>{{ 'common.filter.to' | appTranslate }}</th>
               <td cdk-cell *cdkCellDef="let row">{{ row.toAccount }}</td>
             </ng-container>
             <ng-container cdkColumnDef="amount">
               <th cdk-header-cell *cdkHeaderCellDef class="num">
-                {{ 'common.table.amount' | translate }}
+                {{ 'common.table.amount' | appTranslate }}
               </th>
               <td cdk-cell *cdkCellDef="let row" class="num">
                 {{ row.amount | number: '1.2-2' }} {{ row.currency }}
@@ -92,11 +92,13 @@ const HISTORY_PAGE_SIZE = 10;
             </ng-container>
             <ng-container cdkColumnDef="direction">
               <th cdk-header-cell *cdkHeaderCellDef>
-                {{ 'transfers.history.direction.label' | translate }}
+                {{ 'transfers.history.direction.label' | appTranslate }}
               </th>
               <td cdk-cell *cdkCellDef="let row">
                 {{
-                  row.direction ? ('transfers.history.direction.' + row.direction | translate) : ''
+                  row.direction
+                    ? ('transfers.history.direction.' + row.direction | appTranslate)
+                    : ''
                 }}
               </td>
             </ng-container>
@@ -105,7 +107,7 @@ const HISTORY_PAGE_SIZE = 10;
             <tr cdk-row *cdkRowDef="let row; columns: historyColumns"></tr>
             <tr class="empty-row" *cdkNoDataRow>
               <td [attr.colspan]="historyColumns.length">
-                {{ 'transfers.history.empty' | translate }}
+                {{ 'transfers.history.empty' | appTranslate }}
               </td>
             </tr>
           </table>
@@ -113,7 +115,7 @@ const HISTORY_PAGE_SIZE = 10;
 
         <div class="pager">
           <span class="showing">
-            {{ 'common.pagination.showing' | translate: showingParams() }}
+            {{ 'common.pagination.showing' | appTranslate: showingParams() }}
           </span>
           <ion-button
             size="small"
@@ -121,7 +123,7 @@ const HISTORY_PAGE_SIZE = 10;
             [disabled]="historyPrevDisabled()"
             (click)="historyPrev()"
           >
-            {{ 'common.action.prev' | translate }}
+            {{ 'common.action.prev' | appTranslate }}
           </ion-button>
           <ion-button
             size="small"
@@ -129,7 +131,7 @@ const HISTORY_PAGE_SIZE = 10;
             [disabled]="historyNextDisabled()"
             (click)="historyNext()"
           >
-            {{ 'common.action.next' | translate }}
+            {{ 'common.action.next' | appTranslate }}
           </ion-button>
         </div>
       </ion-card-content>

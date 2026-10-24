@@ -44,7 +44,7 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { arrowBack, swapHorizontal } from 'ionicons/icons';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe } from '../../core/adapters';
 import { OtpComponent } from '../../shared/otp/otp.component';
 import { BeneficiariesStore } from '../beneficiaries/beneficiaries.store';
 import { NotificationService } from '../../core/notifications/notification.service';
@@ -87,7 +87,7 @@ interface ToGroup {
   template: `
     <ion-card class="transfer-card">
       <ion-card-header>
-        <ion-card-title>{{ 'transfers.title' | translate }}</ion-card-title>
+        <ion-card-title>{{ 'transfers.title' | appTranslate }}</ion-card-title>
       </ion-card-header>
 
       @if (loading()) {
@@ -103,7 +103,7 @@ interface ToGroup {
                 interface="popover"
                 fill="outline"
                 labelPlacement="stacked"
-                [label]="'transfers.form.fromAccountLabel' | translate"
+                [label]="'transfers.form.fromAccountLabel' | appTranslate"
               >
                 @for (account of savingsStore.accounts(); track account.id) {
                   <ion-select-option [value]="account.id">{{
@@ -116,12 +116,12 @@ interface ToGroup {
                 interface="popover"
                 fill="outline"
                 labelPlacement="stacked"
-                [label]="'transfers.form.toAccountLabel' | translate"
+                [label]="'transfers.form.toAccountLabel' | appTranslate"
               >
                 @for (group of toGroups(); track group.labelKey) {
                   @if (group.options.length > 0) {
                     <ion-select-option class="group-header" [disabled]="true">{{
-                      group.labelKey | translate
+                      group.labelKey | appTranslate
                     }}</ion-select-option>
                     @for (option of group.options; track option.key) {
                       <ion-select-option [value]="option.key">{{ option.label }}</ion-select-option>
@@ -135,12 +135,12 @@ interface ToGroup {
                 formControlName="amount"
                 fill="outline"
                 labelPlacement="stacked"
-                [label]="'transfers.form.amountLabel' | translate"
+                [label]="'transfers.form.amountLabel' | appTranslate"
               />
               <div class="actions-end">
                 <ion-button type="submit" [disabled]="loading()">
                   <ion-icon slot="start" name="swap-horizontal" />
-                  {{ 'transfers.form.submitCta' | translate }}
+                  {{ 'transfers.form.submitCta' | appTranslate }}
                 </ion-button>
               </div>
             </form>
@@ -155,16 +155,16 @@ interface ToGroup {
           }
           @case ('done') {
             <div class="done">
-              <p>{{ 'transfers.done.complete' | translate }}</p>
+              <p>{{ 'transfers.done.complete' | appTranslate }}</p>
               @if (store.result(); as result) {
                 <dl>
-                  <dt>{{ 'transfers.done.reference' | translate }}</dt>
+                  <dt>{{ 'transfers.done.reference' | appTranslate }}</dt>
                   <dd>{{ result.transferId }}</dd>
-                  <dt>{{ 'common.filter.from' | translate }}</dt>
+                  <dt>{{ 'common.filter.from' | appTranslate }}</dt>
                   <dd>{{ result.fromAccountId }}</dd>
-                  <dt>{{ 'common.filter.to' | translate }}</dt>
+                  <dt>{{ 'common.filter.to' | appTranslate }}</dt>
                   <dd>{{ result.toAccountId }}</dd>
-                  <dt>{{ 'transfers.done.amount' | translate }}</dt>
+                  <dt>{{ 'transfers.done.amount' | appTranslate }}</dt>
                   <dd>{{ result.amount | number: '1.2-2' }}</dd>
                 </dl>
               }
@@ -172,7 +172,7 @@ interface ToGroup {
             <div class="actions-end">
               <ion-button fill="outline" routerLink="/transfers">
                 <ion-icon slot="start" name="arrow-back" aria-hidden="true" />
-                {{ 'transfers.backCta' | translate }}
+                {{ 'transfers.backCta' | appTranslate }}
               </ion-button>
             </div>
           }
