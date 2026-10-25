@@ -496,6 +496,22 @@ class TransfersCommandServiceImplTest {
     }
 
     @Test
+    void initiateAndConfirmUseIdenticalActionFingerprint() {
+        stubSavingsFingerprintAndIssue();
+        stubConfirmUpToUpstreamWrite();
+        when(transferFineractClient.createAccountTransfer(any())).thenReturn(TRANSFER_ID);
+
+        service.initiate(jwt(), initiateSavingsCommand());
+        service.confirm(jwt(), confirmSavingsCommand());
+
+        ArgumentCaptor<String> issuedFingerprint = ArgumentCaptor.forClass(String.class);
+        verify(stepUpTokenService).issue(eq(PUBLIC_ID), eq(DEVICE_FINGERPRINT), issuedFingerprint.capture(), any());
+        ArgumentCaptor<String> verifiedFingerprint = ArgumentCaptor.forClass(String.class);
+        verify(stepUpTokenService).verify(eq(STEP_UP_TOKEN), eq(PUBLIC_ID), eq(DEVICE_FINGERPRINT), verifiedFingerprint.capture());
+        assertThat(verifiedFingerprint.getValue()).isEqualTo(issuedFingerprint.getValue());
+    }
+
+    @Test
     void confirmCompletesTransferToBeneficiaryDestination() {
         when(stepUpTokenService.actionFingerprint(
                 TransferConstants.ENDPOINT, FROM_SAVINGS_ID, TO_SAVINGS_ID, TransferConstants.SAVINGS_TYPE_CODE, AMOUNT))
