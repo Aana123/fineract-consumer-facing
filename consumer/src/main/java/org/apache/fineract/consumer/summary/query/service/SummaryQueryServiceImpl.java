@@ -28,11 +28,11 @@ import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientApi;
+import org.apache.fineract.consumer.infrastructure.access.service.UserClientResolver;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdAccountsResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsLoanAccounts;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsSavingsAccounts;
-import org.apache.fineract.consumer.infrastructure.access.service.UserClientResolver;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.SummaryFineractClient;
 import org.apache.fineract.consumer.summary.query.data.AccountsSummaryQueryData;
 import org.apache.fineract.consumer.summary.query.data.LoanSummaryItemQueryData;
 import org.apache.fineract.consumer.summary.query.data.SavingsSummaryItemQueryData;
@@ -44,7 +44,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SummaryQueryServiceImpl implements SummaryQueryService {
 
-    private final ClientApi clientApi;
+    private final SummaryFineractClient summaryFineractClient;
     private final AccessPolicyEvaluator accessPolicyEvaluator;
     private final UserClientResolver userClientResolver;
 
@@ -61,7 +61,7 @@ public class SummaryQueryServiceImpl implements SummaryQueryService {
 
     private GetClientsClientIdAccountsResponse fetch(Long clientId) {
         try {
-            return clientApi.retrieveAllClientAccounts(clientId);
+            return summaryFineractClient.retrieveAllClientAccounts(clientId);
         } catch (FeignException e) {
             throw new SummaryUpstreamUnavailableException(e);
         }
