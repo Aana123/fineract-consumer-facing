@@ -22,7 +22,7 @@ package org.apache.fineract.consumer.identity.query.service;
 import feign.FeignException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientIdentifierApi;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.IdentityFineractClient;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.ClientIdentifierData;
 import org.apache.fineract.consumer.identity.query.data.IdentityVerificationQuery;
 import org.apache.fineract.consumer.identity.query.data.IdentityVerificationQueryData;
@@ -33,7 +33,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class IdentityQueryServiceImpl implements IdentityQueryService {
 
-    private final ClientIdentifierApi identifiersClient;
+    private final IdentityFineractClient identifiersClient;
 
     @Override
     public IdentityVerificationQueryData verifyIdentity(IdentityVerificationQuery query) {
