@@ -91,12 +91,8 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
                 .target(user.getEmail())
                 .build());
 
-        String actionFingerprint = stepUpTokenService.actionFingerprint(
-                TransferConstants.ENDPOINT,
-                command.getFromAccountId(),
-                command.getToAccountId(),
-                toLoan ? TransferConstants.LOAN_TYPE_CODE : TransferConstants.SAVINGS_TYPE_CODE,
-                command.getAmount());
+        String actionFingerprint = transferActionFingerprint(
+                command.getFromAccountId(), command.getToAccountId(), toLoan, command.getAmount());
         IssuedJwt issued = stepUpTokenService.issue(
                 publicId, command.getDeviceFingerprint(), actionFingerprint, StepUpConstants.STEPUP_TTL);
 
@@ -112,12 +108,8 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
         boolean toLoan = resolveToLoan(command.getToAccountType());
 
         UUID publicId = publicId(jwt);
-        String actionFingerprint = stepUpTokenService.actionFingerprint(
-                TransferConstants.ENDPOINT,
-                command.getFromAccountId(),
-                command.getToAccountId(),
-                toLoan ? TransferConstants.LOAN_TYPE_CODE : TransferConstants.SAVINGS_TYPE_CODE,
-                command.getAmount());
+        String actionFingerprint = transferActionFingerprint(
+                command.getFromAccountId(), command.getToAccountId(), toLoan, command.getAmount());
         if (!stepUpTokenService.verify(
                 command.getStepUpToken(), publicId, command.getDeviceFingerprint(), actionFingerprint)) {
             throw new TransferStepUpInvalidException();
@@ -188,6 +180,15 @@ public class TransfersCommandServiceImpl implements TransfersCommandService {
             return false;
         }
         throw new TransferInvalidException();
+    }
+
+    private String transferActionFingerprint(Long fromAccountId, Long toAccountId, boolean toLoan, BigDecimal amount) {
+        return stepUpTokenService.actionFingerprint(
+                TransferConstants.ENDPOINT,
+                fromAccountId,
+                toAccountId,
+                toLoan ? TransferConstants.LOAN_TYPE_CODE : TransferConstants.SAVINGS_TYPE_CODE,
+                amount);
     }
 
     private void requireDestinationAllowed(Jwt jwt, Long userId, Long toAccountId, boolean toLoan, BigDecimal amount) {

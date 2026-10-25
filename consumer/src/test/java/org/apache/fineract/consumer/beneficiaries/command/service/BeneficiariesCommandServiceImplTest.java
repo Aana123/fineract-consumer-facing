@@ -102,7 +102,6 @@ class BeneficiariesCommandServiceImplTest {
     private static final String ACCOUNT_NUMBER = "000000123";
     private static final String OTHER_ACCOUNT_NUMBER = "999999999";
     private static final BigDecimal TRANSFER_LIMIT = new BigDecimal("500.00");
-    private static final String TRANSFER_LIMIT_FINGERPRINT_PART = "500";
     private static final Long SAVINGS_ID = 66L;
     private static final Long CALLER_CLIENT_ID = 42L;
     private static final Long DEST_CLIENT_ID = 99L;
@@ -221,13 +220,13 @@ class BeneficiariesCommandServiceImplTest {
 
     private void stubAddFingerprint() {
         when(stepUpTokenService.actionFingerprint(BeneficiaryConstants.ADD_ACTION_ID,
-                NAME, OFFICE_NAME, ACCOUNT_NUMBER, TRANSFER_LIMIT_FINGERPRINT_PART))
+                NAME, OFFICE_NAME, ACCOUNT_NUMBER, TRANSFER_LIMIT))
                 .thenReturn(ACTION_FINGERPRINT);
     }
 
     private void stubUpdateFingerprint(String name) {
         when(stepUpTokenService.actionFingerprint(BeneficiaryConstants.UPDATE_ACTION_ID,
-                BENEFICIARY_PUBLIC_ID.toString(), name, TRANSFER_LIMIT_FINGERPRINT_PART))
+                BENEFICIARY_PUBLIC_ID.toString(), name, TRANSFER_LIMIT))
                 .thenReturn(ACTION_FINGERPRINT);
     }
 
