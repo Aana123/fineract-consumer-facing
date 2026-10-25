@@ -34,7 +34,7 @@ import java.util.UUID;
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.exception.AccessKycRequiredException;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientApi;
+import org.apache.fineract.consumer.infrastructure.access.service.UserClientResolver;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdAccountsResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsLoanAccounts;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsLoanAccountsStatus;
@@ -42,7 +42,7 @@ import org.apache.fineract.consumer.infrastructure.fineractclient.generated.mode
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsSavingsAccounts;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsSavingsAccountsCurrency;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsSavingsAccountsStatus;
-import org.apache.fineract.consumer.infrastructure.access.service.UserClientResolver;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.SummaryFineractClient;
 import org.apache.fineract.consumer.summary.query.data.AccountsSummaryQueryData;
 import org.apache.fineract.consumer.summary.query.data.LoanSummaryItemQueryData;
 import org.apache.fineract.consumer.summary.query.data.SavingsSummaryItemQueryData;
@@ -74,7 +74,7 @@ class SummaryQueryServiceImplTest {
     private static final String LOAN_AMOUNT_PAID = "1000.00";
 
     @Mock
-    private ClientApi clientApi;
+    private SummaryFineractClient summaryFineractClient;
 
     @Mock
     private AccessPolicyEvaluator accessPolicyEvaluator;
@@ -113,7 +113,7 @@ class SummaryQueryServiceImplTest {
                 .currency(new GetClientsLoansAccountsCurrency().code(CURRENCY_CODE))
                 .loanBalance(new BigDecimal(LOAN_BALANCE))
                 .amountPaid(new BigDecimal(LOAN_AMOUNT_PAID));
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID))
+        when(summaryFineractClient.retrieveAllClientAccounts(CLIENT_ID))
                 .thenReturn(new GetClientsClientIdAccountsResponse()
                         .savingsAccounts(Set.of(savings))
                         .loanAccounts(Set.of(loan)));
@@ -149,7 +149,7 @@ class SummaryQueryServiceImplTest {
     void getAccountsSummarySortsAccountsById() {
         Jwt jwt = jwt();
         when(userClientResolver.resolveClientId(jwt)).thenReturn(CLIENT_ID);
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID))
+        when(summaryFineractClient.retrieveAllClientAccounts(CLIENT_ID))
                 .thenReturn(new GetClientsClientIdAccountsResponse()
                         .savingsAccounts(Set.of(
                                 new GetClientsSavingsAccounts().id(9L),
@@ -167,7 +167,7 @@ class SummaryQueryServiceImplTest {
     void getAccountsSummaryEmptyWhenUpstreamHasNoAccounts() {
         Jwt jwt = jwt();
         when(userClientResolver.resolveClientId(jwt)).thenReturn(CLIENT_ID);
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID))
+        when(summaryFineractClient.retrieveAllClientAccounts(CLIENT_ID))
                 .thenReturn(new GetClientsClientIdAccountsResponse());
 
         AccountsSummaryQueryData result = service.getAccountsSummary(jwt);
@@ -180,7 +180,7 @@ class SummaryQueryServiceImplTest {
     void getAccountsSummaryTranslatesUpstreamFailure() {
         Jwt jwt = jwt();
         when(userClientResolver.resolveClientId(jwt)).thenReturn(CLIENT_ID);
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID)).thenThrow(mock(FeignException.class));
+        when(summaryFineractClient.retrieveAllClientAccounts(CLIENT_ID)).thenThrow(mock(FeignException.class));
 
         assertThatThrownBy(() -> service.getAccountsSummary(jwt))
                 .isInstanceOf(SummaryUpstreamUnavailableException.class)
@@ -195,6 +195,6 @@ class SummaryQueryServiceImplTest {
 
         assertThatThrownBy(() -> service.getAccountsSummary(jwt))
                 .isInstanceOf(AccessKycRequiredException.class);
-        verifyNoInteractions(clientApi);
+        verifyNoInteractions(summaryFineractClient);
     }
 }
