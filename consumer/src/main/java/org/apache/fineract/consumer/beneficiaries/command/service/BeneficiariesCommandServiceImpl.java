@@ -259,16 +259,12 @@ public class BeneficiariesCommandServiceImpl implements BeneficiariesCommandServ
     private String addActionFingerprint(String name, String officeName, String accountNumber,
             BigDecimal transferLimit) {
         return stepUpTokenService.actionFingerprint(BeneficiaryConstants.ADD_ACTION_ID,
-                name, officeName, accountNumber, fingerprintPart(transferLimit));
+                name, officeName, accountNumber, transferLimit == null ? "" : transferLimit);
     }
 
     private String updateActionFingerprint(UUID beneficiaryPublicId, String name, BigDecimal transferLimit) {
         return stepUpTokenService.actionFingerprint(BeneficiaryConstants.UPDATE_ACTION_ID,
-                beneficiaryPublicId.toString(), name, fingerprintPart(transferLimit));
-    }
-
-    private static String fingerprintPart(BigDecimal transferLimit) {
-        return transferLimit == null ? "" : transferLimit.stripTrailingZeros().toPlainString();
+                beneficiaryPublicId.toString(), name, transferLimit == null ? "" : transferLimit);
     }
 
     private static BeneficiaryChallengeCommandData challenge(IssuedJwt issued, String email) {
