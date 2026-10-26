@@ -35,10 +35,10 @@ import java.util.UUID;
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
 import org.apache.fineract.consumer.infrastructure.access.service.OwnedAccountsCache;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.LoansApi;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostLoansLoanIdResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostLoansResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PutLoansLoanIdResponse;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.LoansFineractClient;
 import org.apache.fineract.consumer.infrastructure.idempotency.service.IdempotencyKeyDeriver;
 import org.apache.fineract.consumer.infrastructure.idempotency.service.IdempotencyKeyHolder;
 import org.apache.fineract.consumer.loans.command.data.ModifyLoanApplicationCommand;
@@ -46,8 +46,8 @@ import org.apache.fineract.consumer.loans.command.data.SubmitLoanApplicationComm
 import org.apache.fineract.consumer.loans.command.data.WithdrawLoanApplicationCommand;
 import org.apache.fineract.consumer.loans.command.exception.LoanCommandInProgressException;
 import org.apache.fineract.consumer.loans.command.exception.LoanCommandUpstreamUnavailableException;
-import org.apache.fineract.consumer.user.query.data.UserStatus;
 import org.apache.fineract.consumer.user.query.data.UserQueryData;
+import org.apache.fineract.consumer.user.query.data.UserStatus;
 import org.apache.fineract.consumer.user.query.service.UserQueryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -80,7 +80,7 @@ class LoansCommandServiceImplTest {
     private IdempotencyKeyHolder idempotencyKeyHolder;
 
     @Mock
-    private LoansApi loansApi;
+    private LoansFineractClient loansFineractClient;
 
     @InjectMocks
     private LoansCommandServiceImpl service;
@@ -116,7 +116,7 @@ class LoansCommandServiceImplTest {
     void submitAuthorizesLoanApplicationSubmit() {
         Jwt jwt = jwt();
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
-        when(loansApi.calculateOrSubmitLoanApplication(any(), isNull()))
+        when(loansFineractClient.calculateOrSubmitLoanApplication(any(), isNull()))
                 .thenReturn(new PostLoansResponse().loanId(LOAN_ID).resourceId(99L));
 
         service.submitApplication(jwt, submitCommand());
@@ -129,7 +129,7 @@ class LoansCommandServiceImplTest {
     void submitDoesNotEvictOwnershipCacheWhenUpstreamFails() {
         Jwt jwt = jwt();
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
-        when(loansApi.calculateOrSubmitLoanApplication(any(), isNull()))
+        when(loansFineractClient.calculateOrSubmitLoanApplication(any(), isNull()))
                 .thenThrow(mock(FeignException.class));
 
         assertThatThrownBy(() -> service.submitApplication(jwt, submitCommand()))
@@ -142,14 +142,14 @@ class LoansCommandServiceImplTest {
     void submitSetsDerivedIdempotencyKeyBeforeUpstreamCallAndClearsAfter() {
         Jwt jwt = jwt();
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
-        when(loansApi.calculateOrSubmitLoanApplication(any(), isNull()))
+        when(loansFineractClient.calculateOrSubmitLoanApplication(any(), isNull()))
                 .thenReturn(new PostLoansResponse().loanId(LOAN_ID).resourceId(99L));
 
         service.submitApplication(jwt, submitCommand());
 
-        InOrder inOrder = inOrder(idempotencyKeyHolder, loansApi);
+        InOrder inOrder = inOrder(idempotencyKeyHolder, loansFineractClient);
         inOrder.verify(idempotencyKeyHolder).set(IdempotencyKeyDeriver.derive(PUBLIC_ID, IDEMPOTENCY_KEY));
-        inOrder.verify(loansApi).calculateOrSubmitLoanApplication(any(), isNull());
+        inOrder.verify(loansFineractClient).calculateOrSubmitLoanApplication(any(), isNull());
         inOrder.verify(idempotencyKeyHolder).clear();
     }
 
@@ -157,7 +157,7 @@ class LoansCommandServiceImplTest {
     void submitClearsIdempotencyKeyWhenUpstreamFails() {
         Jwt jwt = jwt();
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
-        when(loansApi.calculateOrSubmitLoanApplication(any(), isNull()))
+        when(loansFineractClient.calculateOrSubmitLoanApplication(any(), isNull()))
                 .thenThrow(mock(FeignException.class));
 
         assertThatThrownBy(() -> service.submitApplication(jwt, submitCommand()))
@@ -172,7 +172,7 @@ class LoansCommandServiceImplTest {
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
         FeignException inProgress = mock(FeignException.class);
         when(inProgress.status()).thenReturn(HttpStatus.TOO_EARLY.value());
-        when(loansApi.calculateOrSubmitLoanApplication(any(), isNull())).thenThrow(inProgress);
+        when(loansFineractClient.calculateOrSubmitLoanApplication(any(), isNull())).thenThrow(inProgress);
 
         assertThatThrownBy(() -> service.submitApplication(jwt, submitCommand()))
                 .isInstanceOf(LoanCommandInProgressException.class)
@@ -185,7 +185,7 @@ class LoansCommandServiceImplTest {
     void modifySetsDerivedIdempotencyKeyBeforeUpstreamCallAndClearsAfter() {
         Jwt jwt = jwt();
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
-        when(loansApi.updateLoanApplication(eq(LOAN_ID), any(), isNull()))
+        when(loansFineractClient.updateLoanApplication(eq(LOAN_ID), any(), isNull()))
                 .thenReturn(new PutLoansLoanIdResponse().resourceId(99L));
 
         service.modifyApplication(jwt, ModifyLoanApplicationCommand.builder()
@@ -196,9 +196,9 @@ class LoansCommandServiceImplTest {
                 .idempotencyKey(IDEMPOTENCY_KEY)
                 .build());
 
-        InOrder inOrder = inOrder(idempotencyKeyHolder, loansApi);
+        InOrder inOrder = inOrder(idempotencyKeyHolder, loansFineractClient);
         inOrder.verify(idempotencyKeyHolder).set(IdempotencyKeyDeriver.derive(PUBLIC_ID, IDEMPOTENCY_KEY));
-        inOrder.verify(loansApi).updateLoanApplication(eq(LOAN_ID), any(), isNull());
+        inOrder.verify(loansFineractClient).updateLoanApplication(eq(LOAN_ID), any(), isNull());
         inOrder.verify(idempotencyKeyHolder).clear();
     }
 
@@ -206,7 +206,7 @@ class LoansCommandServiceImplTest {
     void withdrawSetsDerivedIdempotencyKeyBeforeUpstreamCallAndClearsAfter() {
         Jwt jwt = jwt();
         when(userQueryService.findByPublicId(PUBLIC_ID)).thenReturn(user());
-        when(loansApi.handleCommandsLoan(eq(LOAN_ID), any(), eq(LoansCommandService.WITHDRAW_COMMAND)))
+        when(loansFineractClient.handleCommandsLoan(eq(LOAN_ID), any(), eq(LoansCommandService.WITHDRAW_COMMAND)))
                 .thenReturn(new PostLoansLoanIdResponse().resourceId(99L));
 
         service.withdrawApplication(jwt, WithdrawLoanApplicationCommand.builder()
@@ -215,9 +215,9 @@ class LoansCommandServiceImplTest {
                 .idempotencyKey(IDEMPOTENCY_KEY)
                 .build());
 
-        InOrder inOrder = inOrder(idempotencyKeyHolder, loansApi);
+        InOrder inOrder = inOrder(idempotencyKeyHolder, loansFineractClient);
         inOrder.verify(idempotencyKeyHolder).set(IdempotencyKeyDeriver.derive(PUBLIC_ID, IDEMPOTENCY_KEY));
-        inOrder.verify(loansApi).handleCommandsLoan(eq(LOAN_ID), any(), eq(LoansCommandService.WITHDRAW_COMMAND));
+        inOrder.verify(loansFineractClient).handleCommandsLoan(eq(LOAN_ID), any(), eq(LoansCommandService.WITHDRAW_COMMAND));
         inOrder.verify(idempotencyKeyHolder).clear();
     }
 }
