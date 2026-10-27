@@ -22,6 +22,7 @@ package org.apache.fineract.consumer.loans.query.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -33,18 +34,15 @@ import feign.FeignException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.LoanTransactionsApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdAccountsResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsLoanAccounts;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsLoanAccountsStatus;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsLoansAccountsCurrency;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetLoansLoanIdTransactionsResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetLoansLoanIdTransactionsTransactionIdResponse;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.LoansQueryFineractClient;
 import org.apache.fineract.consumer.infrastructure.access.service.UserClientResolver;
 import org.apache.fineract.consumer.loans.query.data.LoanAccountListItemQueryData;
 import org.apache.fineract.consumer.loans.query.data.LoanTransactionListQuery;
@@ -69,10 +67,7 @@ class LoansQueryServiceImplTest {
     private static final Integer SIZE = 20;
 
     @Mock
-    private ClientApi clientApi;
-
-    @Mock
-    private LoanTransactionsApi loanTransactionsApi;
+    private LoansQueryFineractClient fineractClient;
 
     @Mock
     private AccessPolicyEvaluator accessPolicyEvaluator;
@@ -101,8 +96,7 @@ class LoansQueryServiceImplTest {
                 .productName("Personal Loan")
                 .status(new GetClientsLoanAccountsStatus().code("loanStatusType.active").active(true))
                 .currency(new GetClientsLoansAccountsCurrency().code("USD"));
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID))
-                .thenReturn(new GetClientsClientIdAccountsResponse().loanAccounts(Set.of(account)));
+        when(fineractClient.listClientLoanAccounts(CLIENT_ID)).thenReturn(List.of(account));
 
         List<LoanAccountListItemQueryData> result = service.listAccounts(jwt);
 
@@ -124,8 +118,7 @@ class LoansQueryServiceImplTest {
         GetClientsLoanAccounts account = new GetClientsLoanAccounts()
                 .id(78L)
                 .accountNo("000000078");
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID))
-                .thenReturn(new GetClientsClientIdAccountsResponse().loanAccounts(Set.of(account)));
+        when(fineractClient.listClientLoanAccounts(CLIENT_ID)).thenReturn(List.of(account));
 
         List<LoanAccountListItemQueryData> result = service.listAccounts(jwt);
 
@@ -138,8 +131,7 @@ class LoansQueryServiceImplTest {
     void listAccountsEmptyWhenNoLoanAccounts() {
         Jwt jwt = jwt();
         when(userClientResolver.resolveClientId(jwt)).thenReturn(CLIENT_ID);
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID))
-                .thenReturn(new GetClientsClientIdAccountsResponse());
+        when(fineractClient.listClientLoanAccounts(CLIENT_ID)).thenReturn(List.of());
 
         assertThat(service.listAccounts(jwt)).isEmpty();
     }
@@ -148,7 +140,7 @@ class LoansQueryServiceImplTest {
     void listAccountsTranslatesUpstreamFailure() {
         Jwt jwt = jwt();
         when(userClientResolver.resolveClientId(jwt)).thenReturn(CLIENT_ID);
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID)).thenThrow(mock(FeignException.class));
+        when(fineractClient.listClientLoanAccounts(CLIENT_ID)).thenThrow(mock(FeignException.class));
 
         assertThatThrownBy(() -> service.listAccounts(jwt))
                 .isInstanceOf(LoanQueryUpstreamUnavailableException.class);
@@ -163,7 +155,7 @@ class LoansQueryServiceImplTest {
                         new GetLoansLoanIdTransactionsTransactionIdResponse().id(2L).amount(BigDecimal.valueOf(50.0))))
                 .totalElements(42L)
                 .totalPages(3);
-        when(loanTransactionsApi.retrieveAllLoanTransactions(LOAN_ID, null, PAGE, SIZE, "date,desc"))
+        when(fineractClient.getTransactionsPage(LOAN_ID, PAGE, SIZE, "date,desc"))
                 .thenReturn(response);
 
         LoanTransactionListQuery query = LoanTransactionListQuery.builder()
@@ -187,7 +179,7 @@ class LoansQueryServiceImplTest {
     @Test
     void listTransactionsEmptyEnvelopeWhenNoContent() {
         Jwt jwt = jwt();
-        when(loanTransactionsApi.retrieveAllLoanTransactions(LOAN_ID, null, PAGE, SIZE, null))
+        when(fineractClient.getTransactionsPage(LOAN_ID, PAGE, SIZE, null))
                 .thenReturn(new GetLoansLoanIdTransactionsResponse());
 
         LoanTransactionListQuery query = LoanTransactionListQuery.builder()
@@ -216,9 +208,7 @@ class LoansQueryServiceImplTest {
                         transactionOn(5L, LocalDate.of(2026, 1, 20))))
                 .totalElements(999L)
                 .totalPages(99);
-        when(loanTransactionsApi.retrieveAllLoanTransactions(
-                LOAN_ID, null, 0, LoansQueryServiceImpl.FETCH_ALL_PAGE_SIZE, null))
-                .thenReturn(response);
+        when(fineractClient.getAllTransactions(LOAN_ID, null)).thenReturn(response);
 
         LoanTransactionListQuery query = LoanTransactionListQuery.builder()
                 .loanId(LOAN_ID)
@@ -234,8 +224,7 @@ class LoansQueryServiceImplTest {
         assertThat(result.getTotalPages()).isEqualTo(2);
         assertThat(result.getPage()).isZero();
         assertThat(result.getSize()).isEqualTo(2);
-        verify(loanTransactionsApi).retrieveAllLoanTransactions(
-                LOAN_ID, null, 0, LoansQueryServiceImpl.FETCH_ALL_PAGE_SIZE, null);
+        verify(fineractClient).getAllTransactions(LOAN_ID, null);
     }
 
     @Test
@@ -246,9 +235,7 @@ class LoansQueryServiceImplTest {
                         transactionOn(2L, LocalDate.of(2026, 1, 5)),
                         transactionOn(3L, LocalDate.of(2026, 1, 10)),
                         transactionOn(4L, LocalDate.of(2026, 1, 15))));
-        when(loanTransactionsApi.retrieveAllLoanTransactions(
-                LOAN_ID, null, 0, LoansQueryServiceImpl.FETCH_ALL_PAGE_SIZE, null))
-                .thenReturn(response);
+        when(fineractClient.getAllTransactions(LOAN_ID, null)).thenReturn(response);
 
         LoanTransactionListQuery query = LoanTransactionListQuery.builder()
                 .loanId(LOAN_ID)
@@ -269,9 +256,7 @@ class LoansQueryServiceImplTest {
         Jwt jwt = jwt();
         GetLoansLoanIdTransactionsResponse response = new GetLoansLoanIdTransactionsResponse()
                 .content(List.of(transactionOn(2L, LocalDate.of(2026, 1, 5))));
-        when(loanTransactionsApi.retrieveAllLoanTransactions(
-                LOAN_ID, null, 0, LoansQueryServiceImpl.FETCH_ALL_PAGE_SIZE, null))
-                .thenReturn(response);
+        when(fineractClient.getAllTransactions(LOAN_ID, null)).thenReturn(response);
 
         LoanTransactionListQuery query = LoanTransactionListQuery.builder()
                 .loanId(LOAN_ID)
@@ -303,7 +288,8 @@ class LoansQueryServiceImplTest {
                 .isInstanceOf(LoanQueryAccessDeniedException.class)
                 .hasFieldOrPropertyWithValue("code", LoanQueryAccessDeniedException.CODE);
 
-        verify(loanTransactionsApi, never()).retrieveAllLoanTransactions(any(), any(), any(), any(), any());
+        verify(fineractClient, never()).getTransactionsPage(any(), anyInt(), anyInt(), any());
+        verify(fineractClient, never()).getAllTransactions(any(), any());
     }
 
     private static GetLoansLoanIdTransactionsTransactionIdResponse transactionOn(Long id, LocalDate date) {
