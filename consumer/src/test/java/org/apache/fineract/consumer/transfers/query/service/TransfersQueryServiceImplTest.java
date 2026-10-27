@@ -39,9 +39,6 @@ import java.util.UUID;
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
 import org.apache.fineract.consumer.infrastructure.access.service.UserClientResolver;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.AccountTransfersApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.SavingsAccountApi;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.AccountTransferData;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.CurrencyData;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetAccountTransfersPageItems;
@@ -52,6 +49,7 @@ import org.apache.fineract.consumer.infrastructure.fineractclient.generated.mode
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountData;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountTransactionData;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountTransactionEnumData;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.TransferFineractClient;
 import org.apache.fineract.consumer.transfers.query.data.TransferDirection;
 import org.apache.fineract.consumer.transfers.query.data.TransferHistoryQuery;
 import org.apache.fineract.consumer.transfers.query.data.TransferQueryData;
@@ -91,13 +89,7 @@ class TransfersQueryServiceImplTest {
     private static final String AMOUNT_10 = "10.00";
 
     @Mock
-    private ClientApi clientApi;
-
-    @Mock
-    private SavingsAccountApi savingsAccountApi;
-
-    @Mock
-    private AccountTransfersApi accountTransfersApi;
+    private TransferFineractClient transferFineractClient;
 
     @Mock
     private AccessPolicyEvaluator accessPolicyEvaluator;
@@ -147,12 +139,12 @@ class TransfersQueryServiceImplTest {
 
     private void givenAccounts(Jwt jwt, GetClientsSavingsAccounts... accounts) {
         when(userClientResolver.resolveClientId(jwt)).thenReturn(CLIENT_ID);
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID))
+        when(transferFineractClient.retrieveAllClientAccounts(CLIENT_ID))
                 .thenReturn(new GetClientsClientIdAccountsResponse().savingsAccounts(Set.of(accounts)));
     }
 
     private void givenTransactions(Long accountId, String accountNo, SavingsAccountTransactionData... transactions) {
-        when(savingsAccountApi.retrieveSavingsAccount(accountId, null, null, TRANSACTIONS_ASSOCIATION))
+        when(transferFineractClient.retrieveSavingsAccount(accountId, null, null, TRANSACTIONS_ASSOCIATION))
                 .thenReturn(new SavingsAccountData().accountNo(accountNo).transactions(List.of(transactions)));
     }
 
@@ -161,12 +153,12 @@ class TransfersQueryServiceImplTest {
     }
 
     private void givenTransferDestinationType(Long transferId, Long accountTypeId) {
-        when(accountTransfersApi.retrieveOneAccountTransfer(transferId)).thenReturn(new GetAccountTransfersPageItems()
+        when(transferFineractClient.retrieveOneAccountTransfer(transferId)).thenReturn(new GetAccountTransfersPageItems()
                 .toAccountType(new GetAccountTransfersPageItemsToAccountType().id(accountTypeId)));
     }
 
     private void givenTransferDestinationAccount(Long transferId, Long destinationAccountNo) {
-        when(accountTransfersApi.retrieveOneAccountTransfer(transferId)).thenReturn(new GetAccountTransfersPageItems()
+        when(transferFineractClient.retrieveOneAccountTransfer(transferId)).thenReturn(new GetAccountTransfersPageItems()
                 .toAccountType(new GetAccountTransfersPageItemsToAccountType().id(SAVINGS_ACCOUNT_TYPE_ID))
                 .toAccount(new GetAccountTransfersPageItemsFromAccount().accountNo(destinationAccountNo)));
     }
@@ -218,7 +210,7 @@ class TransfersQueryServiceImplTest {
         givenTransferDestinationType(TRANSFER_ID, LOAN_ACCOUNT_TYPE_ID);
 
         assertThat(service.listTransfers(jwt, query(0, 20, null, null)).getContent()).isEmpty();
-        verify(accountTransfersApi).retrieveOneAccountTransfer(TRANSFER_ID);
+        verify(transferFineractClient).retrieveOneAccountTransfer(TRANSFER_ID);
     }
 
     @Test
@@ -235,7 +227,7 @@ class TransfersQueryServiceImplTest {
         assertThat(result.get(0).getFromAccount()).isEqualTo(ACCOUNT_A_NO);
         assertThat(result.get(0).getToAccount()).isEqualTo(BENEFICIARY_ACCOUNT_NO_PADDED);
         assertThat(result.get(0).getDirection()).isEqualTo(TransferDirection.OUTGOING);
-        verify(accountTransfersApi).retrieveOneAccountTransfer(TRANSFER_ID);
+        verify(transferFineractClient).retrieveOneAccountTransfer(TRANSFER_ID);
     }
 
     @Test
@@ -274,7 +266,7 @@ class TransfersQueryServiceImplTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getTransferId()).isEqualTo(TRANSFER_ID);
-        verify(accountTransfersApi, never()).retrieveOneAccountTransfer(any());
+        verify(transferFineractClient, never()).retrieveOneAccountTransfer(any());
     }
 
     @Test
@@ -361,7 +353,7 @@ class TransfersQueryServiceImplTest {
     void listTransfersTranslatesUpstreamFailure() {
         Jwt jwt = jwt();
         when(userClientResolver.resolveClientId(jwt)).thenReturn(CLIENT_ID);
-        when(clientApi.retrieveAllClientAccounts(CLIENT_ID)).thenThrow(mock(FeignException.class));
+        when(transferFineractClient.retrieveAllClientAccounts(CLIENT_ID)).thenThrow(mock(FeignException.class));
 
         assertThatThrownBy(() -> service.listTransfers(jwt, query(0, 20, null, null)))
                 .isInstanceOf(TransferQueryUpstreamUnavailableException.class);

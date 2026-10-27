@@ -21,6 +21,9 @@ package org.apache.fineract.consumer.infrastructure.fineractclient.service;
 
 import org.apache.fineract.consumer.infrastructure.fineractclient.data.LoanPayoffData;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.AccountTransferRequest;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetAccountTransfersPageItems;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdAccountsResponse;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountData;
 
 public interface TransferFineractClient {
 
@@ -31,4 +34,11 @@ public interface TransferFineractClient {
     Long createAccountTransfer(AccountTransferRequest request);
 
     LoanPayoffData getLoanPayoff(Long loanId);
+
+    GetClientsClientIdAccountsResponse retrieveAllClientAccounts(Long clientId);
+
+    SavingsAccountData retrieveSavingsAccount(Long accountId, Boolean staffInSelectedOfficeOnly,
+                                              String chargeStatus, String associations);
+
+    GetAccountTransfersPageItems retrieveOneAccountTransfer(Long resourceId);
 }

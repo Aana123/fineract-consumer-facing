@@ -28,6 +28,8 @@ import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.LoansApi;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.SavingsAccountApi;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.AccountTransferRequest;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetAccountTransfersPageItems;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdAccountsResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetLoansLoanIdResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetLoansLoanIdStatus;
@@ -87,5 +89,21 @@ public class TransferFineractClientImpl implements TransferFineractClient {
                 .active(true)
                 .payoffAmount(amount)
                 .build();
+    }
+
+    @Override
+    public GetClientsClientIdAccountsResponse retrieveAllClientAccounts(Long clientId) {
+        return clientApi.retrieveAllClientAccounts(clientId);
+    }
+
+    @Override
+    public SavingsAccountData retrieveSavingsAccount(Long accountId, Boolean staffInSelectedOfficeOnly,
+                                                     String chargeStatus, String associations) {
+        return savingsAccountApi.retrieveSavingsAccount(accountId, staffInSelectedOfficeOnly, chargeStatus, associations);
+    }
+
+    @Override
+    public GetAccountTransfersPageItems retrieveOneAccountTransfer(Long resourceId) {
+        return accountTransfersApi.retrieveOneAccountTransfer(resourceId);
     }
 }

@@ -30,9 +30,6 @@ import lombok.RequiredArgsConstructor;
 import org.apache.fineract.consumer.infrastructure.access.data.ConsumerAction;
 import org.apache.fineract.consumer.infrastructure.access.service.AccessPolicyEvaluator;
 import org.apache.fineract.consumer.infrastructure.access.service.UserClientResolver;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.AccountTransfersApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.ClientApi;
-import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.SavingsAccountApi;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.AccountTransferData;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetAccountTransfersPageItems;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetAccountTransfersPageItemsToAccountType;
@@ -41,6 +38,7 @@ import org.apache.fineract.consumer.infrastructure.fineractclient.generated.mode
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountData;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.SavingsAccountTransactionData;
 import org.apache.fineract.consumer.infrastructure.fineractclient.service.FineractCaller;
+import org.apache.fineract.consumer.infrastructure.fineractclient.service.TransferFineractClient;
 import org.apache.fineract.consumer.transfers.query.data.TransferDirection;
 import org.apache.fineract.consumer.transfers.query.data.TransferHistoryQuery;
 import org.apache.fineract.consumer.transfers.query.data.TransferQueryData;
@@ -59,9 +57,7 @@ public class TransfersQueryServiceImpl implements TransfersQueryService {
     private static final int ACCOUNT_NO_PADDED_WIDTH = 9;
     private static final String ACCOUNT_NO_PAD_CHAR = "0";
 
-    private final ClientApi clientApi;
-    private final SavingsAccountApi savingsAccountApi;
-    private final AccountTransfersApi accountTransfersApi;
+    private final TransferFineractClient transferFineractClient;
     private final AccessPolicyEvaluator accessPolicyEvaluator;
     private final UserClientResolver userClientResolver;
 
@@ -95,7 +91,7 @@ public class TransfersQueryServiceImpl implements TransfersQueryService {
     }
 
     private Map<Long, TransferLegs> collectLegs(Jwt jwt, Long clientId) {
-        GetClientsClientIdAccountsResponse accounts = fetch(() -> clientApi.retrieveAllClientAccounts(clientId));
+        GetClientsClientIdAccountsResponse accounts = fetch(() -> transferFineractClient.retrieveAllClientAccounts(clientId));
         Map<Long, TransferLegs> legsByTransferId = new LinkedHashMap<>();
         if (accounts == null || accounts.getSavingsAccounts() == null) {
             return legsByTransferId;
@@ -105,7 +101,7 @@ public class TransfersQueryServiceImpl implements TransfersQueryService {
             accessPolicyEvaluator.authorize(jwt, ConsumerAction.SAVINGS_VIEW, accountId,
                     TransferQueryAccessDeniedException::new);
             SavingsAccountData details = fetch(() ->
-                    savingsAccountApi.retrieveSavingsAccount(accountId, null, null, TRANSACTIONS_ASSOCIATION));
+                    transferFineractClient.retrieveSavingsAccount(accountId, null, null, TRANSACTIONS_ASSOCIATION));
             mergeAccountLegs(legsByTransferId, details);
         }
         return legsByTransferId;
@@ -118,7 +114,7 @@ public class TransfersQueryServiceImpl implements TransfersQueryService {
             if (legs.toAccountNo != null) {
                 continue;
             }
-            GetAccountTransfersPageItems details = fetch(() -> accountTransfersApi.retrieveOneAccountTransfer(legs.transfer.getId()));
+            GetAccountTransfersPageItems details = fetch(() -> transferFineractClient.retrieveOneAccountTransfer(legs.transfer.getId()));
             if (isLoanDestination(details)) {
                 legsIterator.remove();
             } else {

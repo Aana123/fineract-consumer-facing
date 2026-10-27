@@ -21,7 +21,6 @@ package org.apache.fineract.consumer.infrastructure.fineractclient.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +33,8 @@ import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.LoansApi;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.SavingsAccountApi;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.AccountTransferRequest;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetAccountTransfersPageItems;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdAccountsResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetClientsClientIdResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetLoansLoanIdResponse;
 import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.GetLoansLoanIdStatus;
@@ -170,5 +171,38 @@ class TransferFineractClientImplTest {
         assertThat(payoff.isActive()).isFalse();
         assertThat(payoff.getPayoffAmount()).isEqualTo(BigDecimal.ZERO);
         verify(loanTransactionsApi, never()).retrieveTemplateLoanTransaction(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void retrieveAllClientAccountsDelegatesToGeneratedApi() {
+        GetClientsClientIdAccountsResponse expected = new GetClientsClientIdAccountsResponse();
+        when(clientApi.retrieveAllClientAccounts(CLIENT_ID)).thenReturn(expected);
+
+        GetClientsClientIdAccountsResponse result = client.retrieveAllClientAccounts(CLIENT_ID);
+
+        assertThat(result).isSameAs(expected);
+        verify(clientApi).retrieveAllClientAccounts(CLIENT_ID);
+    }
+
+    @Test
+    void retrieveSavingsAccountDelegatesToGeneratedApi() {
+        SavingsAccountData expected = new SavingsAccountData();
+        when(savingsAccountApi.retrieveSavingsAccount(SAVINGS_ID, null, null, "transactions")).thenReturn(expected);
+
+        SavingsAccountData result = client.retrieveSavingsAccount(SAVINGS_ID, null, null, "transactions");
+
+        assertThat(result).isSameAs(expected);
+        verify(savingsAccountApi).retrieveSavingsAccount(SAVINGS_ID, null, null, "transactions");
+    }
+
+    @Test
+    void retrieveOneAccountTransferDelegatesToGeneratedApi() {
+        GetAccountTransfersPageItems expected = new GetAccountTransfersPageItems();
+        when(accountTransfersApi.retrieveOneAccountTransfer(TRANSFER_ID)).thenReturn(expected);
+
+        GetAccountTransfersPageItems result = client.retrieveOneAccountTransfer(TRANSFER_ID);
+
+        assertThat(result).isSameAs(expected);
+        verify(accountTransfersApi).retrieveOneAccountTransfer(TRANSFER_ID);
     }
 }
