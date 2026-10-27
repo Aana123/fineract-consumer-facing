@@ -1,0 +1,52 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.fineract.consumer.infrastructure.fineractclient.service;
+
+import lombok.RequiredArgsConstructor;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.api.LoansApi;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostLoansLoanIdRequest;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostLoansLoanIdResponse;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostLoansRequest;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PostLoansResponse;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PutLoansLoanIdRequest;
+import org.apache.fineract.consumer.infrastructure.fineractclient.generated.model.PutLoansLoanIdResponse;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class LoansFineractClientImpl implements LoansFineractClient {
+
+    private final LoansApi loansApi;
+
+    @Override
+    public PostLoansResponse calculateOrSubmitLoanApplication(PostLoansRequest request, String command) {
+        return loansApi.calculateOrSubmitLoanApplication(request, command);
+    }
+
+    @Override
+    public PutLoansLoanIdResponse updateLoanApplication(Long loanId, PutLoansLoanIdRequest request, String command) {
+        return loansApi.updateLoanApplication(loanId, request, command);
+    }
+
+    @Override
+    public PostLoansLoanIdResponse handleCommandsLoan(Long loanId, PostLoansLoanIdRequest request, String command) {
+        return loansApi.handleCommandsLoan(loanId, request, command);
+    }
+}
